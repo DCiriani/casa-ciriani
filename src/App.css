@@ -319,3 +319,7 @@ details.day .meal-row{padding:8px 0;}
 .dia-chips-row{
   display:flex; flex-wrap:wrap; gap:6px;
 }
+.sync-dot{
+  display:inline-block; width:6px; height:6px; border-radius:50%;
+  background:#4a9d6e; margin-left:6px; vertical-align:middle;
+}

@@ -1,5 +1,10 @@
 import { useState, useEffect } from 'react'
+import { doc, onSnapshot, setDoc } from 'firebase/firestore'
+import { signInAnonymously, onAuthStateChanged } from 'firebase/auth'
+import { db, auth } from './firebase'
 import './App.css'
+
+const estadoRef = doc(db, 'estado', 'casa')
 
 const diasSemana = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo']
 
@@ -114,10 +119,20 @@ function agruparPorCategoria(itens) {
   return ordem.map((cat) => ({ categoria: cat, itens: map[cat] }))
 }
 
+function lerLocalAntigo(key, fallback) {
+  try {
+    const saved = localStorage.getItem(key)
+    return saved ? JSON.parse(saved) : fallback
+  } catch {
+    return fallback
+  }
+}
+
 function App() {
   const [tab, setTab] = useState('hoje')
   const [done, setDone] = useState({})
   const [loading, setLoading] = useState(true)
+  const [sincronizado, setSincronizado] = useState(false)
   const [cardapio, setCardapio] = useState(cardapioInicial)
   const [editandoCardapio, setEditandoCardapio] = useState(false)
   const [fixas, setFixas] = useState(tarefasFixasIniciais)
@@ -159,52 +174,97 @@ function App() {
     return diaVisivel
   }
 
+  // Login anônimo + escuta em tempo real do documento compartilhado
   useEffect(() => {
-    try {
-      const savedDone = localStorage.getItem('casaCiriani_done')
-      if (savedDone) setDone(JSON.parse(savedDone))
-      const savedCardapio = localStorage.getItem('casaCiriani_cardapio')
-      if (savedCardapio) setCardapio(JSON.parse(savedCardapio))
-      const savedFixas = localStorage.getItem('casaCiriani_fixas')
-      if (savedFixas) setFixas(JSON.parse(savedFixas))
-      const savedSemana = localStorage.getItem('casaCiriani_tarefasSemana')
-      if (savedSemana) setTarefasSemana(JSON.parse(savedSemana))
-      const savedRecorrentes = localStorage.getItem('casaCiriani_recorrentes')
-      if (savedRecorrentes) setRecorrentes(JSON.parse(savedRecorrentes))
-      const savedCompras = localStorage.getItem('casaCiriani_compras2')
-      if (savedCompras) setCompras(JSON.parse(savedCompras))
-    } catch (error) {
-      console.error('Erro ao carregar:', error)
-    } finally {
-      setLoading(false)
+    let unsubscribeSnapshot = () => {}
+
+    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        try {
+          await signInAnonymously(auth)
+        } catch (error) {
+          console.error('Erro ao entrar:', error)
+          setLoading(false)
+        }
+        return
+      }
+
+      unsubscribeSnapshot = onSnapshot(
+        estadoRef,
+        async (snap) => {
+          if (snap.exists()) {
+            const data = snap.data()
+            if (data.done) setDone(data.done)
+            if (data.cardapio) setCardapio(data.cardapio)
+            if (data.fixas) setFixas(data.fixas)
+            if (data.tarefasSemana) setTarefasSemana(data.tarefasSemana)
+            if (data.recorrentes) setRecorrentes(data.recorrentes)
+            if (data.compras) setCompras(data.compras)
+          } else {
+            // primeira vez: usa o que já estava salvo neste celular como ponto de partida
+            const inicial = {
+              done: lerLocalAntigo('casaCiriani_done', {}),
+              cardapio: lerLocalAntigo('casaCiriani_cardapio', cardapioInicial),
+              fixas: lerLocalAntigo('casaCiriani_fixas', tarefasFixasIniciais),
+              tarefasSemana: lerLocalAntigo('casaCiriani_tarefasSemana', {}),
+              recorrentes: lerLocalAntigo('casaCiriani_recorrentes', []),
+              compras: lerLocalAntigo('casaCiriani_compras2', comprasIniciais),
+            }
+            try {
+              await setDoc(estadoRef, inicial)
+            } catch (error) {
+              console.error('Erro ao criar estado inicial:', error)
+            }
+          }
+          setSincronizado(true)
+          setLoading(false)
+        },
+        (error) => {
+          console.error('Erro ao sincronizar:', error)
+          setLoading(false)
+        }
+      )
+    })
+
+    return () => {
+      unsubscribeAuth()
+      unsubscribeSnapshot()
     }
   }, [])
 
-  useEffect(() => { localStorage.setItem('casaCiriani_cardapio', JSON.stringify(cardapio)) }, [cardapio])
-  useEffect(() => { localStorage.setItem('casaCiriani_fixas', JSON.stringify(fixas)) }, [fixas])
-  useEffect(() => { localStorage.setItem('casaCiriani_tarefasSemana', JSON.stringify(tarefasSemana)) }, [tarefasSemana])
-  useEffect(() => { localStorage.setItem('casaCiriani_recorrentes', JSON.stringify(recorrentes)) }, [recorrentes])
-  useEffect(() => { localStorage.setItem('casaCiriani_compras2', JSON.stringify(compras)) }, [compras])
+  const salvarCampo = async (campo, valor) => {
+    try {
+      await setDoc(estadoRef, { [campo]: valor }, { merge: true })
+    } catch (error) {
+      console.error('Erro ao salvar:', error)
+    }
+  }
 
   const toggle = (id) => {
     const updated = { ...done, [id]: !done[id] }
     setDone(updated)
-    localStorage.setItem('casaCiriani_done', JSON.stringify(updated))
+    salvarCampo('done', updated)
   }
 
   const toggleFixaWho = (id) => {
-    setFixas(fixas.map((t) => t.id === id ? { ...t, who: t.who === 'diego' ? 'rhania' : 'diego' } : t))
+    const updated = fixas.map((t) => t.id === id ? { ...t, who: t.who === 'diego' ? 'rhania' : 'diego' } : t)
+    setFixas(updated)
+    salvarCampo('fixas', updated)
   }
 
   const removerFixa = (id) => {
-    setFixas(fixas.filter((t) => t.id !== id))
+    const updated = fixas.filter((t) => t.id !== id)
+    setFixas(updated)
+    salvarCampo('fixas', updated)
   }
 
   const adicionarFixa = () => {
     if (!novaFixa.trim()) return
     const id = 'fix_' + Date.now()
     const categoria = novaFixaCategoria.trim() || 'Outras'
-    setFixas([...fixas, { id, text: novaFixa.trim(), who: novaFixaWho, categoria }])
+    const updated = [...fixas, { id, text: novaFixa.trim(), who: novaFixaWho, categoria }]
+    setFixas(updated)
+    salvarCampo('fixas', updated)
     setNovaFixa('')
     setNovaFixaCategoria('')
     setMostrarFormFixa(false)
@@ -223,7 +283,9 @@ function App() {
     const id = 'ts_' + Date.now()
     const categoria = novaTarefaCategoria.trim() || 'Outras'
     const novaLista = [...(tarefasSemana[key] || []), { id, text: novaTarefa.trim(), who: novaTarefaWho, categoria }]
-    setTarefasSemana({ ...tarefasSemana, [key]: novaLista })
+    const updated = { ...tarefasSemana, [key]: novaLista }
+    setTarefasSemana(updated)
+    salvarCampo('tarefasSemana', updated)
     setNovaTarefa('')
     setNovaTarefaCategoria('')
     setMostrarFormTarefa(false)
@@ -232,7 +294,9 @@ function App() {
   const removerTarefaSemana = (dia, offset, itemId) => {
     const key = getSemanaKey(dia, offset)
     const novaLista = (tarefasSemana[key] || []).filter((t) => t.id !== itemId)
-    setTarefasSemana({ ...tarefasSemana, [key]: novaLista })
+    const updated = { ...tarefasSemana, [key]: novaLista }
+    setTarefasSemana(updated)
+    salvarCampo('tarefasSemana', updated)
   }
 
   const toggleTarefaSemanaWho = (dia, offset, itemId) => {
@@ -240,10 +304,11 @@ function App() {
     const novaLista = (tarefasSemana[key] || []).map((t) =>
       t.id === itemId ? { ...t, who: t.who === 'diego' ? 'rhania' : 'diego' } : t
     )
-    setTarefasSemana({ ...tarefasSemana, [key]: novaLista })
+    const updated = { ...tarefasSemana, [key]: novaLista }
+    setTarefasSemana(updated)
+    salvarCampo('tarefasSemana', updated)
   }
 
-  // Recorrentes: tarefas fixas que só valem em certos dias da semana (ex: lixeiro seg/qua)
   const getRecorrentesDia = (dia) => recorrentes.filter((r) => r.dias.includes(dia))
 
   const toggleNovaRecorrenteDia = (dia) => {
@@ -254,7 +319,9 @@ function App() {
     if (!novaRecorrente.trim() || novaRecorrenteDias.length === 0) return
     const id = 'rec_' + Date.now()
     const categoria = novaRecorrenteCategoria.trim() || 'Outras'
-    setRecorrentes([...recorrentes, { id, text: novaRecorrente.trim(), who: novaRecorrenteWho, categoria, dias: novaRecorrenteDias }])
+    const updated = [...recorrentes, { id, text: novaRecorrente.trim(), who: novaRecorrenteWho, categoria, dias: novaRecorrenteDias }]
+    setRecorrentes(updated)
+    salvarCampo('recorrentes', updated)
     setNovaRecorrente('')
     setNovaRecorrenteCategoria('')
     setNovaRecorrenteDias([])
@@ -262,19 +329,25 @@ function App() {
   }
 
   const removerRecorrente = (id) => {
-    setRecorrentes(recorrentes.filter((r) => r.id !== id))
+    const updated = recorrentes.filter((r) => r.id !== id)
+    setRecorrentes(updated)
+    salvarCampo('recorrentes', updated)
   }
 
   const toggleRecorrenteWho = (id) => {
-    setRecorrentes(recorrentes.map((r) => r.id === id ? { ...r, who: r.who === 'diego' ? 'rhania' : 'diego' } : r))
+    const updated = recorrentes.map((r) => r.id === id ? { ...r, who: r.who === 'diego' ? 'rhania' : 'diego' } : r)
+    setRecorrentes(updated)
+    salvarCampo('recorrentes', updated)
   }
 
   const toggleRecorrenteDia = (id, dia) => {
-    setRecorrentes(recorrentes.map((r) => {
+    const updated = recorrentes.map((r) => {
       if (r.id !== id) return r
       const dias = r.dias.includes(dia) ? r.dias.filter((d) => d !== dia) : [...r.dias, dia]
       return { ...r, dias }
-    }))
+    })
+    setRecorrentes(updated)
+    salvarCampo('recorrentes', updated)
   }
 
   const adicionarCompra = () => {
@@ -296,6 +369,7 @@ function App() {
       return cat
     })
     setCompras(updated)
+    salvarCampo('compras', updated)
     setNovaCompra('')
     setNovaCompraQtd('')
     setNovaCompraUnidade('un')
@@ -304,13 +378,15 @@ function App() {
   }
 
   const removerCompra = (catIdx, itemId) => {
-    setCompras(compras.map((cat, i) =>
+    const updated = compras.map((cat, i) =>
       i === catIdx ? { ...cat, itens: cat.itens.filter((it) => it.id !== itemId) } : cat
-    ))
+    )
+    setCompras(updated)
+    salvarCampo('compras', updated)
   }
 
   const salvarEdicao = (catIdx, itemId, campo, valor) => {
-    setCompras(compras.map((cat, i) => {
+    const updated = compras.map((cat, i) => {
       if (i === catIdx) {
         return {
           ...cat,
@@ -324,14 +400,22 @@ function App() {
         }
       }
       return cat
-    }))
+    })
+    setCompras(updated)
+    salvarCampo('compras', updated)
+  }
+
+  const editarCardapio = (idx, campo, valor) => {
+    const updated = [...cardapio]
+    updated[idx] = { ...updated[idx], [campo]: valor }
+    setCardapio(updated)
+    salvarCampo('cardapio', updated)
   }
 
   const hojeCardapio = cardapio[diaVisivelIdx] || cardapio[0]
   const tarefasExtraDia = getTarefasDia(diaVisivel, 0)
   const recorrentesDoDia = getRecorrentesDia(diaVisivel)
 
-  // Categorias sugeridas: fixas + extras já usadas + recorrentes + algumas padrão
   const categoriasSugeridas = (() => {
     const set = new Set(['Gertrudes', 'Cachorros', 'Cozinha', 'Lixo', 'Roupa', 'Cata na casa', 'Compras', 'Outras'])
     fixas.forEach((t) => set.add(t.categoria))
@@ -340,7 +424,6 @@ function App() {
     return Array.from(set)
   })()
 
-  // Agrupar fixas por categoria (pra tela "Hoje")
   const categoriasFixas = []
   const catMap = {}
   fixas.forEach((t) => {
@@ -352,13 +435,13 @@ function App() {
   })
 
   if (loading) {
-    return <div className="app"><div className="screens" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Carregando...</div></div>
+    return <div className="app"><div className="screens" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Sincronizando...</div></div>
   }
 
   return (
     <div className="app">
       <header className="app-header">
-        <p className="wordmark">casa ciriani.</p>
+        <p className="wordmark">casa ciriani. {sincronizado && <span className="sync-dot" title="Sincronizado"></span>}</p>
         <div className="greeting">
           <h1>Oi, Diego &amp; Rhania</h1>
           <p>{hojeDia}-feira · {new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' })}</p>
@@ -466,11 +549,7 @@ function App() {
                     <span className="meal-tag">Almoço</span>
                     {editandoCardapio ? (
                       <input type="text" className="meal-input" value={d.almoco}
-                        onChange={(e) => {
-                          const updated = [...cardapio]
-                          updated[idx] = { ...updated[idx], almoco: e.target.value }
-                          setCardapio(updated)
-                        }}
+                        onChange={(e) => editarCardapio(idx, 'almoco', e.target.value)}
                       />
                     ) : (
                       <span className="meal-text">{d.almoco}</span>
@@ -480,11 +559,7 @@ function App() {
                     <span className="meal-tag">Jantar</span>
                     {editandoCardapio ? (
                       <input type="text" className="meal-input" value={d.jantar}
-                        onChange={(e) => {
-                          const updated = [...cardapio]
-                          updated[idx] = { ...updated[idx], jantar: e.target.value }
-                          setCardapio(updated)
-                        }}
+                        onChange={(e) => editarCardapio(idx, 'jantar', e.target.value)}
                       />
                     ) : (
                       <span className={`meal-text ${d.jantar === 'Livre' ? 'muted' : ''}`}>{d.jantar}</span>
