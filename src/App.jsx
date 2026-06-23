@@ -122,9 +122,18 @@ function App() {
   const [novaCompraCat, setNovaCompraCat] = useState('')
   const [editandoItem, setEditandoItem] = useState(null)
   const [viewTarefas, setViewTarefas] = useState('dia')
+  const [diaOffset, setDiaOffset] = useState(0)
 
   const hojeDiaIdx = getHojeDia()
   const hojeDia = diasSemana[hojeDiaIdx]
+  const diaVisivelIdx = (hojeDiaIdx + diaOffset) % 7
+  const diaVisivel = diasSemana[diaVisivelIdx]
+
+  function getDiaLabel() {
+    if (diaOffset === 0) return 'Hoje'
+    if (diaOffset === 1) return 'Amanhã'
+    return diaVisivel
+  }
 
   useEffect(() => {
     try {
@@ -245,8 +254,19 @@ function App() {
     }))
   }
 
-  const hojeCardapio = cardapio[hojeDiaIdx] || cardapio[0]
-  const tarefasExtraHoje = getTarefasDia(hojeDia, 0)
+  const hojeCardapio = cardapio[diaVisivelIdx] || cardapio[0]
+  const tarefasExtraDia = getTarefasDia(diaVisivel, 0)
+
+  // Agrupar fixas por categoria
+  const categoriasFixas = []
+  const catMap = {}
+  fixas.forEach((t) => {
+    if (!catMap[t.categoria]) {
+      catMap[t.categoria] = []
+      categoriasFixas.push(t.categoria)
+    }
+    catMap[t.categoria].push(t)
+  })
 
   if (loading) {
     return <div className="app"><div className="screens" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Carregando...</div></div>
@@ -266,9 +286,15 @@ function App() {
 
         {tab === 'hoje' && (
           <section>
+            <div className="semana-nav">
+              <button type="button" className="semana-btn" onClick={() => setDiaOffset(Math.max(0, diaOffset - 1))}>‹</button>
+              <span className="semana-label">{getDiaLabel()} · {diaVisivel}</span>
+              <button type="button" className="semana-btn" onClick={() => setDiaOffset(Math.min(6, diaOffset + 1))}>›</button>
+            </div>
+
             <div className="note tilt">
               <span className="tape"></span>
-              <p className="note-eyebrow">Cardápio de hoje</p>
+              <p className="note-eyebrow">Cardápio · {diaVisivel}</p>
               <div className="meal-row">
                 <span className="meal-tag">Almoço</span>
                 <span className="meal-text">{hojeCardapio.almoco}</span>
@@ -279,32 +305,38 @@ function App() {
               </div>
             </div>
 
-            <div className="note">
-              <p className="note-eyebrow">Tarefas fixas de hoje</p>
-              {fixas.map((t) => (
-                <div key={t.id} className={`task-row ${done[t.id] ? 'done' : ''}`}>
-                  <span className={`check ${done[t.id] ? 'checked' : ''}`} onClick={() => toggle(t.id)}>
-                    <CheckIcon />
-                  </span>
-                  <span className="task-text">{t.text}</span>
-                  <span className={`tag ${t.who}`}>{t.who === 'diego' ? 'Diego' : 'Rhania'}</span>
+            {categoriasFixas.map((cat) => (
+              <div key={cat}>
+                <p className="section-title">{cat}</p>
+                <div className="note">
+                  {catMap[cat].map((t) => (
+                    <div key={t.id} className={`task-row ${done[t.id] ? 'done' : ''}`}>
+                      <span className={`check ${done[t.id] ? 'checked' : ''}`} onClick={() => toggle(t.id)}>
+                        <CheckIcon />
+                      </span>
+                      <span className="task-text">{t.text}</span>
+                      <span className={`tag ${t.who}`}>{t.who === 'diego' ? 'Diego' : 'Rhania'}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-
-            {tarefasExtraHoje.length > 0 && (
-              <div className="note">
-                <p className="note-eyebrow">Tarefas de hoje ({hojeDia})</p>
-                {tarefasExtraHoje.map((t) => (
-                  <div key={t.id} className={`task-row ${done[t.id] ? 'done' : ''}`}>
-                    <span className={`check ${done[t.id] ? 'checked' : ''}`} onClick={() => toggle(t.id)}>
-                      <CheckIcon />
-                    </span>
-                    <span className="task-text">{t.text}</span>
-                    <span className={`tag ${t.who}`}>{t.who === 'diego' ? 'Diego' : 'Rhania'}</span>
-                  </div>
-                ))}
               </div>
+            ))}
+
+            {tarefasExtraDia.length > 0 && (
+              <>
+                <p className="section-title">Extras · {diaVisivel}</p>
+                <div className="note">
+                  {tarefasExtraDia.map((t) => (
+                    <div key={t.id} className={`task-row ${done[t.id] ? 'done' : ''}`}>
+                      <span className={`check ${done[t.id] ? 'checked' : ''}`} onClick={() => toggle(t.id)}>
+                        <CheckIcon />
+                      </span>
+                      <span className="task-text">{t.text}</span>
+                      <span className={`tag ${t.who}`}>{t.who === 'diego' ? 'Diego' : 'Rhania'}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
             )}
           </section>
         )}
