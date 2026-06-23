@@ -239,19 +239,29 @@ details.day .meal-row{padding:8px 0;}
 }
 .shop-item:first-child{border-top:none;}
 .shop-item-main{
-  display:flex; align-items:center; gap:10px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  width:100%;
+  text-align:left;
 }
 .shop-item.done .shop-text{
   text-decoration:line-through; color:var(--ink-soft);
+}
+.shop-text{
+  text-align:left;
+  flex:1;
 }
 .shop-badge{
   font-family:'IBM Plex Mono',monospace; font-size:11px;
   background:var(--mustard-soft); color:#8a6010;
   padding:2px 8px; border-radius:20px; white-space:nowrap;
+  flex-shrink:0;
 }
 .shop-obs{
   font-size:12px; color:var(--ink-soft); font-style:italic;
   margin:4px 0 0 29px;
+  text-align:left;
 }
 .shop-edit-form{
   display:flex; flex-direction:column; gap:8px;
