@@ -211,7 +211,16 @@ useEffect(() => {
 
         {tab === 'cardapio' && (
   <section>
-    <p className="section-title">Semana</p>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <p className="section-title">Semana</p>
+      <button
+        type="button"
+        className="btn-editar"
+        onClick={() => setEditandoCardapio(!editandoCardapio)}
+      >
+        {editandoCardapio ? '✓ Salvar' : '✎ Editar'}
+      </button>
+    </div>
     {cardapio.map((d, idx) => (
       <details key={d.dia} className="day" open={d.hoje}>
         <summary>
@@ -221,29 +230,37 @@ useEffect(() => {
         <div className="day-body">
           <div className="meal-row">
             <span className="meal-tag">Almoço</span>
-            <input
-              type="text"
-              className="meal-input"
-              value={d.almoco}
-              onChange={(e) => {
-                const updated = [...cardapio]
-                updated[idx].almoco = e.target.value
-                setCardapio(updated)
-              }}
-            />
+            {editandoCardapio ? (
+              <input
+                type="text"
+                className="meal-input"
+                value={d.almoco}
+                onChange={(e) => {
+                  const updated = [...cardapio]
+                  updated[idx] = { ...updated[idx], almoco: e.target.value }
+                  setCardapio(updated)
+                }}
+              />
+            ) : (
+              <span className="meal-text">{d.almoco}</span>
+            )}
           </div>
           <div className="meal-row">
             <span className="meal-tag">Jantar</span>
-            <input
-              type="text"
-              className="meal-input"
-              value={d.jantar}
-              onChange={(e) => {
-                const updated = [...cardapio]
-                updated[idx].jantar = e.target.value
-                setCardapio(updated)
-              }}
-            />
+            {editandoCardapio ? (
+              <input
+                type="text"
+                className="meal-input"
+                value={d.jantar}
+                onChange={(e) => {
+                  const updated = [...cardapio]
+                  updated[idx] = { ...updated[idx], jantar: e.target.value }
+                  setCardapio(updated)
+                }}
+              />
+            ) : (
+              <span className={`meal-text ${d.jantar === 'Livre' ? 'muted' : ''}`}>{d.jantar}</span>
+            )}
           </div>
         </div>
       </details>
