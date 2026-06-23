@@ -123,6 +123,7 @@ function App() {
   const [tab, setTab] = useState('hoje')
   const [done, setDone] = useState({})
   const [loading, setLoading] = useState(true)
+  const [cardapio, setCardapio] = useState(cardapioSemana)
 
   // Carregar dados do localStorage quando montar
   useEffect(() => {
@@ -137,6 +138,22 @@ function App() {
       setLoading(false)
     }
   }, [])
+  // Carregar cardápio do localStorage
+useEffect(() => {
+  try {
+    const saved = localStorage.getItem('casaCiriani_cardapio')
+    if (saved) {
+      setCardapio(JSON.parse(saved))
+    }
+  } catch (error) {
+    console.error('Erro ao carregar cardápio:', error)
+  }
+}, [])
+
+// Salvar cardápio no localStorage quando mudar
+useEffect(() => {
+  localStorage.setItem('casaCiriani_cardapio', JSON.stringify(cardapio))
+}, [cardapio])
 
   // Salvar no localStorage quando marcar/desmarcar
   const toggle = (id) => {
@@ -193,28 +210,46 @@ function App() {
         )}
 
         {tab === 'cardapio' && (
-          <section>
-            <p className="section-title">Semana</p>
-            {cardapioSemana.map((d) => (
-              <details key={d.dia} className="day" open={d.hoje}>
-                <summary>
-                  {d.dia} {d.hoje && <span className="day-badge">hoje</span>}
-                  <span className="chev">›</span>
-                </summary>
-                <div className="day-body">
-                  <div className="meal-row">
-                    <span className="meal-tag">Almoço</span>
-                    <span className="meal-text">{d.almoco}</span>
-                  </div>
-                  <div className="meal-row">
-                    <span className="meal-tag">Jantar</span>
-                    <span className={`meal-text ${d.jantar === 'Livre' ? 'muted' : ''}`}>{d.jantar}</span>
-                  </div>
-                </div>
-              </details>
-            ))}
-          </section>
-        )}
+  <section>
+    <p className="section-title">Semana</p>
+    {cardapio.map((d, idx) => (
+      <details key={d.dia} className="day" open={d.hoje}>
+        <summary>
+          {d.dia} {d.hoje && <span className="day-badge">hoje</span>}
+          <span className="chev">›</span>
+        </summary>
+        <div className="day-body">
+          <div className="meal-row">
+            <span className="meal-tag">Almoço</span>
+            <input
+              type="text"
+              className="meal-input"
+              value={d.almoco}
+              onChange={(e) => {
+                const updated = [...cardapio]
+                updated[idx].almoco = e.target.value
+                setCardapio(updated)
+              }}
+            />
+          </div>
+          <div className="meal-row">
+            <span className="meal-tag">Jantar</span>
+            <input
+              type="text"
+              className="meal-input"
+              value={d.jantar}
+              onChange={(e) => {
+                const updated = [...cardapio]
+                updated[idx].jantar = e.target.value
+                setCardapio(updated)
+              }}
+            />
+          </div>
+        </div>
+      </details>
+    ))}
+  </section>
+)}
 
         {tab === 'compras' && (
           <section>

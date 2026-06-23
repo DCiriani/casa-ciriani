@@ -162,3 +162,10 @@ details.day .meal-row{padding:8px 0;}
   content:""; position:absolute; top:-7px; width:26px; height:26px;
   border:1.6px solid var(--mustard); border-radius:50%; opacity:.55;
 }
+.meal-input{
+  font-size:14.5px; line-height:1.4; flex:1;
+  border:none; border-bottom:1.6px solid var(--diego);
+  padding:2px 4px; background:transparent;
+  font-family:'Inter',sans-serif; color:var(--ink);
+}
+.meal-input:focus{outline:none; border-bottom-width:2px;}
