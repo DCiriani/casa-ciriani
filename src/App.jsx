@@ -124,6 +124,7 @@ function App() {
   const [done, setDone] = useState({})
   const [loading, setLoading] = useState(true)
   const [cardapio, setCardapio] = useState(cardapioSemana)
+  const [editandoCardapio, setEditandoCardapio] = useState(false)
 
   // Carregar dados do localStorage quando montar
   useEffect(() => {
