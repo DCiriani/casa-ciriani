@@ -29,46 +29,48 @@ const tarefasFixas = [
   { id: 'cn2', text: 'Cata: sala, quartos e lavanderia', who: 'rhania', categoria: 'Cata na casa' },
 ]
 
+const unidades = ['un', 'kg', 'g', 'ml', 'L', 'pacote', 'caixa', 'dúzia']
+
 const comprasIniciais = [
   {
     categoria: 'Frutas',
     itens: [
-      { id: 'f1', text: 'Abacate', qty: '1, pronto' },
-      { id: 'f2', text: 'Mamão', qty: '1, pronto' },
-      { id: 'f3', text: 'Banana', qty: '4, prontas' },
-      { id: 'f4', text: 'Pera' },
-      { id: 'f5', text: 'Melancia' },
-      { id: 'f6', text: 'Laranja' },
+      { id: 'f1', text: 'Abacate', qtd: 1, unidade: 'un', obs: 'pronto pra uso' },
+      { id: 'f2', text: 'Mamão', qtd: 1, unidade: 'un', obs: 'pronto pra uso' },
+      { id: 'f3', text: 'Banana', qtd: 4, unidade: 'un', obs: 'prontas pra uso' },
+      { id: 'f4', text: 'Pera', qtd: 1, unidade: 'un' },
+      { id: 'f5', text: 'Melancia', qtd: 1, unidade: 'un' },
+      { id: 'f6', text: 'Laranja', qtd: 1, unidade: 'un' },
     ],
   },
   {
     categoria: 'Verduras e legumes',
     itens: [
-      { id: 'v1', text: 'Tomate', qty: 'pronto' },
-      { id: 'v2', text: 'Beterraba', qty: '3, prontas' },
-      { id: 'v3', text: 'Vagem' },
-      { id: 'v4', text: 'Alface' },
-      { id: 'v5', text: 'Batata' },
+      { id: 'v1', text: 'Tomate', qtd: 1, unidade: 'kg', obs: 'pronto pra uso' },
+      { id: 'v2', text: 'Beterraba', qtd: 3, unidade: 'un', obs: 'prontas pra uso' },
+      { id: 'v3', text: 'Vagem', qtd: 500, unidade: 'g' },
+      { id: 'v4', text: 'Alface', qtd: 1, unidade: 'un' },
+      { id: 'v5', text: 'Batata', qtd: 1, unidade: 'kg' },
     ],
   },
   {
     categoria: 'Carnes',
     itens: [
-      { id: 'm1', text: 'Bife de vaca' },
-      { id: 'm2', text: 'Filé de frango' },
-      { id: 'm3', text: 'Linguiça de frango' },
-      { id: 'm4', text: 'Fígado' },
-      { id: 'm5', text: 'Carne moída' },
+      { id: 'm1', text: 'Bife de vaca', qtd: 1, unidade: 'kg' },
+      { id: 'm2', text: 'Filé de frango', qtd: 1, unidade: 'kg' },
+      { id: 'm3', text: 'Linguiça de frango', qtd: 1, unidade: 'pacote' },
+      { id: 'm4', text: 'Fígado', qtd: 1, unidade: 'kg' },
+      { id: 'm5', text: 'Carne moída', qtd: 500, unidade: 'g' },
     ],
   },
   {
     categoria: 'Padaria e mercado',
     itens: [
-      { id: 'p1', text: 'Pão' },
-      { id: 'p2', text: 'Sabão OMO' },
-      { id: 'p3', text: 'Leite' },
-      { id: 'p4', text: 'Batata palha' },
-      { id: 'p5', text: 'Suco' },
+      { id: 'p1', text: 'Pão', qtd: 1, unidade: 'pacote' },
+      { id: 'p2', text: 'Sabão OMO', qtd: 1, unidade: 'un' },
+      { id: 'p3', text: 'Leite', qtd: 1, unidade: 'L' },
+      { id: 'p4', text: 'Batata palha', qtd: 1, unidade: 'pacote' },
+      { id: 'p5', text: 'Suco', qtd: 1, unidade: 'L' },
     ],
   },
 ]
@@ -93,6 +95,11 @@ function CheckIcon() {
   )
 }
 
+function formatQtd(qtd, unidade) {
+  if (!qtd && qtd !== 0) return ''
+  return `${qtd} ${unidade}`
+}
+
 function App() {
   const [tab, setTab] = useState('hoje')
   const [done, setDone] = useState({})
@@ -109,8 +116,11 @@ function App() {
   const [novaTarefaDia, setNovaTarefaDia] = useState('')
   const [mostrarFormCompra, setMostrarFormCompra] = useState(false)
   const [novaCompra, setNovaCompra] = useState('')
-  const [novaCompraQty, setNovaCompraQty] = useState('')
+  const [novaCompraQtd, setNovaCompraQtd] = useState('')
+  const [novaCompraUnidade, setNovaCompraUnidade] = useState('un')
+  const [novaCompraObs, setNovaCompraObs] = useState('')
   const [novaCompraCat, setNovaCompraCat] = useState('')
+  const [editandoItem, setEditandoItem] = useState(null)
   const [viewTarefas, setViewTarefas] = useState('dia')
 
   const hojeDiaIdx = getHojeDia()
@@ -126,7 +136,7 @@ function App() {
       if (savedFixas) setFixas(JSON.parse(savedFixas))
       const savedSemana = localStorage.getItem('casaCiriani_tarefasSemana')
       if (savedSemana) setTarefasSemana(JSON.parse(savedSemana))
-      const savedCompras = localStorage.getItem('casaCiriani_compras')
+      const savedCompras = localStorage.getItem('casaCiriani_compras2')
       if (savedCompras) setCompras(JSON.parse(savedCompras))
     } catch (error) {
       console.error('Erro ao carregar:', error)
@@ -138,7 +148,7 @@ function App() {
   useEffect(() => { localStorage.setItem('casaCiriani_cardapio', JSON.stringify(cardapio)) }, [cardapio])
   useEffect(() => { localStorage.setItem('casaCiriani_fixas', JSON.stringify(fixas)) }, [fixas])
   useEffect(() => { localStorage.setItem('casaCiriani_tarefasSemana', JSON.stringify(tarefasSemana)) }, [tarefasSemana])
-  useEffect(() => { localStorage.setItem('casaCiriani_compras', JSON.stringify(compras)) }, [compras])
+  useEffect(() => { localStorage.setItem('casaCiriani_compras2', JSON.stringify(compras)) }, [compras])
 
   const toggle = (id) => {
     const updated = { ...done, [id]: !done[id] }
@@ -190,13 +200,24 @@ function App() {
     const id = 'shop_' + Date.now()
     const updated = compras.map((cat) => {
       if (cat.categoria === novaCompraCat) {
-        return { ...cat, itens: [...cat.itens, { id, text: novaCompra.trim(), qty: novaCompraQty || undefined }] }
+        return {
+          ...cat,
+          itens: [...cat.itens, {
+            id,
+            text: novaCompra.trim(),
+            qtd: Number(novaCompraQtd) || 1,
+            unidade: novaCompraUnidade,
+            obs: novaCompraObs.trim() || undefined,
+          }],
+        }
       }
       return cat
     })
     setCompras(updated)
     setNovaCompra('')
-    setNovaCompraQty('')
+    setNovaCompraQtd('')
+    setNovaCompraUnidade('un')
+    setNovaCompraObs('')
     setMostrarFormCompra(false)
   }
 
@@ -204,6 +225,24 @@ function App() {
     setCompras(compras.map((cat, i) =>
       i === catIdx ? { ...cat, itens: cat.itens.filter((it) => it.id !== itemId) } : cat
     ))
+  }
+
+  const salvarEdicao = (catIdx, itemId, campo, valor) => {
+    setCompras(compras.map((cat, i) => {
+      if (i === catIdx) {
+        return {
+          ...cat,
+          itens: cat.itens.map((it) => {
+            if (it.id === itemId) {
+              if (campo === 'qtd') return { ...it, qtd: Number(valor) || 0 }
+              return { ...it, [campo]: valor }
+            }
+            return it
+          }),
+        }
+      }
+      return cat
+    }))
   }
 
   const hojeCardapio = cardapio[hojeDiaIdx] || cardapio[0]
@@ -321,40 +360,85 @@ function App() {
 
         {tab === 'compras' && (
           <section>
-            <div className="note">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <p className="note-eyebrow">Lista da semana</p>
-                <button type="button" className="btn-editar" onClick={() => setMostrarFormCompra(!mostrarFormCompra)}>
-                  {mostrarFormCompra ? '✕ Cancelar' : '+ Adicionar'}
-                </button>
-              </div>
-              {mostrarFormCompra && (
-                <div className="form-add">
-                  <input type="text" className="meal-input" placeholder="Nome do item..." value={novaCompra} onChange={(e) => setNovaCompra(e.target.value)} />
-                  <input type="text" className="meal-input" placeholder="Quantidade (opcional)" value={novaCompraQty} onChange={(e) => setNovaCompraQty(e.target.value)} style={{ marginTop: 8 }} />
-                  <select className="select-cat" value={novaCompraCat} onChange={(e) => setNovaCompraCat(e.target.value)}>
-                    <option value="">Escolha a categoria...</option>
-                    {compras.map((cat) => (<option key={cat.categoria} value={cat.categoria}>{cat.categoria}</option>))}
-                  </select>
-                  <button type="button" className="btn-confirmar" onClick={adicionarCompra}>Adicionar item</button>
-                </div>
-              )}
-              {compras.map((cat, catIdx) => (
-                <div key={cat.categoria}>
-                  <p className="section-title">{cat.categoria}</p>
-                  {cat.itens.map((item) => (
-                    <div key={item.id} className={`shop-row ${done[item.id] ? 'done' : ''}`}>
-                      <span className={`check ${done[item.id] ? 'checked' : ''}`} onClick={() => toggle(item.id)}>
-                        <CheckIcon />
-                      </span>
-                      <span className="shop-text">{item.text}</span>
-                      {item.qty && <span className="shop-qty">{item.qty}</span>}
-                      <span className="btn-remover" onClick={() => removerCompra(catIdx, item.id)}>✕</span>
-                    </div>
-                  ))}
-                </div>
-              ))}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <p className="section-title" style={{ margin: 0 }}>Lista de compras</p>
+              <button type="button" className="btn-editar" onClick={() => setMostrarFormCompra(!mostrarFormCompra)}>
+                {mostrarFormCompra ? '✕ Cancelar' : '+ Adicionar'}
+              </button>
             </div>
+
+            {mostrarFormCompra && (
+              <div className="form-add note">
+                <input type="text" className="meal-input" placeholder="Nome do item..." value={novaCompra} onChange={(e) => setNovaCompra(e.target.value)} />
+                <div className="compra-qty-row">
+                  <input type="number" className="input-qtd" placeholder="Qtd" value={novaCompraQtd} onChange={(e) => setNovaCompraQtd(e.target.value)} />
+                  <select className="select-unidade" value={novaCompraUnidade} onChange={(e) => setNovaCompraUnidade(e.target.value)}>
+                    {unidades.map((u) => (<option key={u} value={u}>{u}</option>))}
+                  </select>
+                </div>
+                <input type="text" className="meal-input" placeholder="Observação (opcional, ex: pronto pra uso)" value={novaCompraObs} onChange={(e) => setNovaCompraObs(e.target.value)} />
+                <select className="select-cat" value={novaCompraCat} onChange={(e) => setNovaCompraCat(e.target.value)}>
+                  <option value="">Escolha a categoria...</option>
+                  {compras.map((cat) => (<option key={cat.categoria} value={cat.categoria}>{cat.categoria}</option>))}
+                </select>
+                <button type="button" className="btn-confirmar" onClick={adicionarCompra}>Adicionar item</button>
+              </div>
+            )}
+
+            {compras.map((cat, catIdx) => (
+              <div key={cat.categoria}>
+                <p className="section-title">{cat.categoria}</p>
+                <div className="note">
+                  {cat.itens.map((item) => {
+                    const isEditing = editandoItem === item.id
+                    return (
+                      <div key={item.id} className={`shop-item ${done[item.id] ? 'done' : ''}`}>
+                        <div className="shop-item-main">
+                          <span className={`check ${done[item.id] ? 'checked' : ''}`} onClick={() => toggle(item.id)}>
+                            <CheckIcon />
+                          </span>
+                          <span className="shop-text">{item.text}</span>
+                          <span className="shop-badge">{formatQtd(item.qtd, item.unidade)}</span>
+                          <span className="btn-edit-item" onClick={() => setEditandoItem(isEditing ? null : item.id)}>
+                            {isEditing ? '✓' : '✎'}
+                          </span>
+                          <span className="btn-remover" onClick={() => removerCompra(catIdx, item.id)}>✕</span>
+                        </div>
+                        {item.obs && !isEditing && (
+                          <p className="shop-obs">{item.obs}</p>
+                        )}
+                        {isEditing && (
+                          <div className="shop-edit-form">
+                            <div className="compra-qty-row">
+                              <input
+                                type="number"
+                                className="input-qtd"
+                                value={item.qtd}
+                                onChange={(e) => salvarEdicao(catIdx, item.id, 'qtd', e.target.value)}
+                              />
+                              <select
+                                className="select-unidade"
+                                value={item.unidade}
+                                onChange={(e) => salvarEdicao(catIdx, item.id, 'unidade', e.target.value)}
+                              >
+                                {unidades.map((u) => (<option key={u} value={u}>{u}</option>))}
+                              </select>
+                            </div>
+                            <input
+                              type="text"
+                              className="meal-input"
+                              placeholder="Observação (opcional)"
+                              value={item.obs || ''}
+                              onChange={(e) => salvarEdicao(catIdx, item.id, 'obs', e.target.value)}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
           </section>
         )}
 
