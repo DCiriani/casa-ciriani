@@ -288,3 +288,9 @@ details.day .meal-row{padding:8px 0;}
   font-size:13px; color:var(--diego); cursor:pointer;
   padding:0 4px; flex-shrink:0;
 }
+.day-subcat{
+  font-family:'IBM Plex Mono',monospace; font-size:9.5px; letter-spacing:.08em;
+  text-transform:uppercase; color:var(--ink-soft);
+  margin:14px 0 6px;
+}
+.day-subcat:first-child{margin-top:0;}

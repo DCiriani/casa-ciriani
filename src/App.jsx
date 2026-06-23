@@ -100,6 +100,20 @@ function formatQtd(qtd, unidade) {
   return `${qtd} ${unidade}`
 }
 
+function agruparPorCategoria(itens) {
+  const map = {}
+  const ordem = []
+  itens.forEach((t) => {
+    const cat = t.categoria || 'Outras'
+    if (!map[cat]) {
+      map[cat] = []
+      ordem.push(cat)
+    }
+    map[cat].push(t)
+  })
+  return ordem.map((cat) => ({ categoria: cat, itens: map[cat] }))
+}
+
 function App() {
   const [tab, setTab] = useState('hoje')
   const [done, setDone] = useState({})
@@ -114,6 +128,7 @@ function App() {
   const [novaTarefa, setNovaTarefa] = useState('')
   const [novaTarefaWho, setNovaTarefaWho] = useState('diego')
   const [novaTarefaDia, setNovaTarefaDia] = useState('')
+  const [novaTarefaCategoria, setNovaTarefaCategoria] = useState('')
   const [mostrarFormCompra, setMostrarFormCompra] = useState(false)
   const [novaCompra, setNovaCompra] = useState('')
   const [novaCompraQtd, setNovaCompraQtd] = useState('')
@@ -184,9 +199,11 @@ function App() {
     if (!novaTarefa.trim() || !novaTarefaDia) return
     const key = getSemanaKey(novaTarefaDia, semanaOffset)
     const id = 'ts_' + Date.now()
-    const novaLista = [...(tarefasSemana[key] || []), { id, text: novaTarefa.trim(), who: novaTarefaWho }]
+    const categoria = novaTarefaCategoria.trim() || 'Outras'
+    const novaLista = [...(tarefasSemana[key] || []), { id, text: novaTarefa.trim(), who: novaTarefaWho, categoria }]
     setTarefasSemana({ ...tarefasSemana, [key]: novaLista })
     setNovaTarefa('')
+    setNovaTarefaCategoria('')
     setMostrarFormTarefa(false)
   }
 
@@ -257,7 +274,15 @@ function App() {
   const hojeCardapio = cardapio[diaVisivelIdx] || cardapio[0]
   const tarefasExtraDia = getTarefasDia(diaVisivel, 0)
 
-  // Agrupar fixas por categoria
+  // Categorias sugeridas: as fixas + as já usadas em tarefas extras + algumas padrão
+  const categoriasSugeridas = (() => {
+    const set = new Set(['Gertrudes', 'Cachorros', 'Cozinha', 'Lixo', 'Roupa', 'Cata na casa', 'Compras', 'Outras'])
+    fixas.forEach((t) => set.add(t.categoria))
+    Object.values(tarefasSemana).forEach((lista) => lista.forEach((t) => { if (t.categoria) set.add(t.categoria) }))
+    return Array.from(set)
+  })()
+
+  // Agrupar fixas por categoria (pra tela "Hoje")
   const categoriasFixas = []
   const catMap = {}
   fixas.forEach((t) => {
@@ -322,11 +347,11 @@ function App() {
               </div>
             ))}
 
-            {tarefasExtraDia.length > 0 && (
-              <>
-                <p className="section-title">Extras · {diaVisivel}</p>
+            {agruparPorCategoria(tarefasExtraDia).map((grupo) => (
+              <div key={grupo.categoria}>
+                <p className="section-title">{grupo.categoria} · extra</p>
                 <div className="note">
-                  {tarefasExtraDia.map((t) => (
+                  {grupo.itens.map((t) => (
                     <div key={t.id} className={`task-row ${done[t.id] ? 'done' : ''}`}>
                       <span className={`check ${done[t.id] ? 'checked' : ''}`} onClick={() => toggle(t.id)}>
                         <CheckIcon />
@@ -336,8 +361,8 @@ function App() {
                     </div>
                   ))}
                 </div>
-              </>
-            )}
+              </div>
+            ))}
           </section>
         )}
 
@@ -522,6 +547,17 @@ function App() {
                       <span className={`tag diego ${novaTarefaWho === 'diego' ? 'selected' : 'faded'}`} onClick={() => setNovaTarefaWho('diego')}>Diego</span>
                       <span className={`tag rhania ${novaTarefaWho === 'rhania' ? 'selected' : 'faded'}`} onClick={() => setNovaTarefaWho('rhania')}>Rhania</span>
                     </div>
+                    <input
+                      type="text"
+                      className="meal-input"
+                      placeholder="Categoria (ex: Cozinha, Compras...)"
+                      list="categorias-sugeridas"
+                      value={novaTarefaCategoria}
+                      onChange={(e) => setNovaTarefaCategoria(e.target.value)}
+                    />
+                    <datalist id="categorias-sugeridas">
+                      {categoriasSugeridas.map((c) => (<option key={c} value={c} />))}
+                    </datalist>
                     <select className="select-cat" value={novaTarefaDia} onChange={(e) => setNovaTarefaDia(e.target.value)}>
                       <option value="">Escolha o dia...</option>
                       {diasSemana.map((d) => (<option key={d} value={d}>{d}</option>))}
@@ -544,16 +580,21 @@ function App() {
                         {tarefasDoDia.length === 0 && (
                           <p className="empty-msg">Nenhuma tarefa extra pra esse dia</p>
                         )}
-                        {tarefasDoDia.map((t) => (
-                          <div key={t.id} className={`task-row ${done[t.id] ? 'done' : ''}`}>
-                            <span className={`check ${done[t.id] ? 'checked' : ''}`} onClick={() => toggle(t.id)}>
-                              <CheckIcon />
-                            </span>
-                            <span className="task-text">{t.text}</span>
-                            <span className={`tag ${t.who} clickable`} onClick={() => toggleTarefaSemanaWho(dia, semanaOffset, t.id)}>
-                              {t.who === 'diego' ? 'Diego' : 'Rhania'}
-                            </span>
-                            <span className="btn-remover" onClick={() => removerTarefaSemana(dia, semanaOffset, t.id)}>✕</span>
+                        {agruparPorCategoria(tarefasDoDia).map((grupo) => (
+                          <div key={grupo.categoria}>
+                            <p className="day-subcat">{grupo.categoria}</p>
+                            {grupo.itens.map((t) => (
+                              <div key={t.id} className={`task-row ${done[t.id] ? 'done' : ''}`}>
+                                <span className={`check ${done[t.id] ? 'checked' : ''}`} onClick={() => toggle(t.id)}>
+                                  <CheckIcon />
+                                </span>
+                                <span className="task-text">{t.text}</span>
+                                <span className={`tag ${t.who} clickable`} onClick={() => toggleTarefaSemanaWho(dia, semanaOffset, t.id)}>
+                                  {t.who === 'diego' ? 'Diego' : 'Rhania'}
+                                </span>
+                                <span className="btn-remover" onClick={() => removerTarefaSemana(dia, semanaOffset, t.id)}>✕</span>
+                              </div>
+                            ))}
                           </div>
                         ))}
                       </div>
