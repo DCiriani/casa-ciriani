@@ -1,13 +1,17 @@
 import { useState, useEffect } from 'react'
 import './App.css'
 
-const initialTasksHoje = [
-  { id: 't1', text: 'Gertrudes — antes da 1ª soneca', who: 'diego' },
-  { id: 't2', text: 'Catar cocô da garagem', who: 'rhania' },
-  { id: 't3', text: 'Tirar o lixo de casa', who: 'diego' },
+const cardapioInicial = [
+  { dia: 'Segunda', almoco: 'Carne de panela, feijão, arroz, couve e tomate', jantar: 'Espeto', hoje: true },
+  { dia: 'Terça', almoco: 'Bife, arroz, feijão, tomate e couve', jantar: 'Feijoada' },
+  { dia: 'Quarta', almoco: 'Strogonoff, arroz, batata palha, tomate', jantar: 'Espeto' },
+  { dia: 'Quinta', almoco: 'Bife de frango empanado, arroz, feijão, alface e tomate', jantar: 'Livre' },
+  { dia: 'Sexta', almoco: 'Linguiça de frango, arroz, feijão', jantar: 'Espeto' },
+  { dia: 'Sábado', almoco: 'Fígado, purê de batata e o que tiver de salada', jantar: 'Lanche' },
+  { dia: 'Domingo', almoco: 'Nhoque, carne moída', jantar: 'Livre' },
 ]
 
-const tarefasPorCategoria = [
+const tarefasIniciais = [
   {
     categoria: 'Gertrudes',
     itens: [
@@ -53,17 +57,7 @@ const tarefasPorCategoria = [
   },
 ]
 
-const cardapioSemana = [
-  { dia: 'Segunda', almoco: 'Carne de panela, feijão, arroz, couve e tomate', jantar: 'Espeto', hoje: true },
-  { dia: 'Terça', almoco: 'Bife, arroz, feijão, tomate e couve', jantar: 'Feijoada' },
-  { dia: 'Quarta', almoco: 'Strogonoff, arroz, batata palha, tomate', jantar: 'Espeto' },
-  { dia: 'Quinta', almoco: 'Bife de frango empanado, arroz, feijão, alface e tomate', jantar: 'Livre' },
-  { dia: 'Sexta', almoco: 'Linguiça de frango, arroz, feijão', jantar: 'Espeto' },
-  { dia: 'Sábado', almoco: 'Fígado, purê de batata e o que tiver de salada', jantar: 'Lanche' },
-  { dia: 'Domingo', almoco: 'Nhoque, carne moída', jantar: 'Livre' },
-]
-
-const comprasPorCategoria = [
+const comprasIniciais = [
   {
     categoria: 'Frutas',
     itens: [
@@ -123,46 +117,108 @@ function App() {
   const [tab, setTab] = useState('hoje')
   const [done, setDone] = useState({})
   const [loading, setLoading] = useState(true)
-  const [cardapio, setCardapio] = useState(cardapioSemana)
+  const [cardapio, setCardapio] = useState(cardapioInicial)
   const [editandoCardapio, setEditandoCardapio] = useState(false)
+  const [tarefas, setTarefas] = useState(tarefasIniciais)
+  const [compras, setCompras] = useState(comprasIniciais)
+  const [mostrarFormTarefa, setMostrarFormTarefa] = useState(false)
+  const [novaTarefa, setNovaTarefa] = useState('')
+  const [novaTarefaWho, setNovaTarefaWho] = useState('diego')
+  const [novaTarefaCat, setNovaTarefaCat] = useState('')
+  const [mostrarFormCompra, setMostrarFormCompra] = useState(false)
+  const [novaCompra, setNovaCompra] = useState('')
+  const [novaCompraQty, setNovaCompraQty] = useState('')
+  const [novaCompraCat, setNovaCompraCat] = useState('')
 
   // Carregar dados do localStorage quando montar
   useEffect(() => {
     try {
-      const saved = localStorage.getItem('casaCiriani_done')
-      if (saved) {
-        setDone(JSON.parse(saved))
-      }
+      const savedDone = localStorage.getItem('casaCiriani_done')
+      if (savedDone) setDone(JSON.parse(savedDone))
+      const savedCardapio = localStorage.getItem('casaCiriani_cardapio')
+      if (savedCardapio) setCardapio(JSON.parse(savedCardapio))
+      const savedTarefas = localStorage.getItem('casaCiriani_tarefas')
+      if (savedTarefas) setTarefas(JSON.parse(savedTarefas))
+      const savedCompras = localStorage.getItem('casaCiriani_compras')
+      if (savedCompras) setCompras(JSON.parse(savedCompras))
     } catch (error) {
       console.error('Erro ao carregar:', error)
     } finally {
       setLoading(false)
     }
   }, [])
-  // Carregar cardápio do localStorage
-useEffect(() => {
-  try {
-    const saved = localStorage.getItem('casaCiriani_cardapio')
-    if (saved) {
-      setCardapio(JSON.parse(saved))
-    }
-  } catch (error) {
-    console.error('Erro ao carregar cardápio:', error)
-  }
-}, [])
 
-// Salvar cardápio no localStorage quando mudar
-useEffect(() => {
-  localStorage.setItem('casaCiriani_cardapio', JSON.stringify(cardapio))
-}, [cardapio])
+  // Salvar no localStorage quando mudar
+  useEffect(() => { localStorage.setItem('casaCiriani_cardapio', JSON.stringify(cardapio)) }, [cardapio])
+  useEffect(() => { localStorage.setItem('casaCiriani_tarefas', JSON.stringify(tarefas)) }, [tarefas])
+  useEffect(() => { localStorage.setItem('casaCiriani_compras', JSON.stringify(compras)) }, [compras])
 
-  // Salvar no localStorage quando marcar/desmarcar
   const toggle = (id) => {
     const newState = !done[id]
     const updated = { ...done, [id]: newState }
     setDone(updated)
     localStorage.setItem('casaCiriani_done', JSON.stringify(updated))
   }
+
+  const adicionarTarefa = () => {
+    if (!novaTarefa.trim() || !novaTarefaCat) return
+    const id = 'custom_' + Date.now()
+    const updated = tarefas.map((cat) => {
+      if (cat.categoria === novaTarefaCat) {
+        return { ...cat, itens: [...cat.itens, { id, text: novaTarefa.trim(), who: novaTarefaWho }] }
+      }
+      return cat
+    })
+    setTarefas(updated)
+    setNovaTarefa('')
+    setMostrarFormTarefa(false)
+  }
+
+  const removerTarefa = (catIndex, itemId) => {
+    const updated = tarefas.map((cat, i) => {
+      if (i === catIndex) {
+        return { ...cat, itens: cat.itens.filter((item) => item.id !== itemId) }
+      }
+      return cat
+    })
+    setTarefas(updated)
+  }
+
+  const adicionarCompra = () => {
+    if (!novaCompra.trim() || !novaCompraCat) return
+    const id = 'shop_' + Date.now()
+    const updated = compras.map((cat) => {
+      if (cat.categoria === novaCompraCat) {
+        return { ...cat, itens: [...cat.itens, { id, text: novaCompra.trim(), qty: novaCompraQty || undefined }] }
+      }
+      return cat
+    })
+    setCompras(updated)
+    setNovaCompra('')
+    setNovaCompraQty('')
+    setMostrarFormCompra(false)
+  }
+
+  const removerCompra = (catIndex, itemId) => {
+    const updated = compras.map((cat, i) => {
+      if (i === catIndex) {
+        return { ...cat, itens: cat.itens.filter((item) => item.id !== itemId) }
+      }
+      return cat
+    })
+    setCompras(updated)
+  }
+
+  // Tarefas de hoje (pega as primeiras de cada categoria)
+  const tarefasHoje = []
+  tarefas.forEach((cat) => {
+    cat.itens.forEach((item) => {
+      tarefasHoje.push(item)
+    })
+  })
+
+  // Cardápio de hoje
+  const hoje = cardapio.find((d) => d.hoje) || cardapio[0]
 
   if (loading) {
     return <div className="app"><div className="screens" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Carregando...</div></div>
@@ -186,17 +242,17 @@ useEffect(() => {
               <p className="note-eyebrow">Cardápio de hoje</p>
               <div className="meal-row">
                 <span className="meal-tag">Almoço</span>
-                <span className="meal-text">Carne de panela, feijão, arroz, couve e tomate</span>
+                <span className="meal-text">{hoje.almoco}</span>
               </div>
               <div className="meal-row">
                 <span className="meal-tag">Jantar</span>
-                <span className="meal-text">Espeto</span>
+                <span className="meal-text">{hoje.jantar}</span>
               </div>
             </div>
 
             <div className="note">
               <p className="note-eyebrow">Tarefas de hoje</p>
-              {initialTasksHoje.map((t) => (
+              {tarefasHoje.slice(0, 5).map((t) => (
                 <div key={t.id} className={`task-row ${done[t.id] ? 'done' : ''}`}>
                   <span className={`check ${done[t.id] ? 'checked' : ''}`} onClick={() => toggle(t.id)}>
                     <CheckIcon />
@@ -211,69 +267,106 @@ useEffect(() => {
         )}
 
         {tab === 'cardapio' && (
-  <section>
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-      <p className="section-title">Semana</p>
-      <button
-        type="button"
-        className="btn-editar"
-        onClick={() => setEditandoCardapio(!editandoCardapio)}
-      >
-        {editandoCardapio ? '✓ Salvar' : '✎ Editar'}
-      </button>
-    </div>
-    {cardapio.map((d, idx) => (
-      <details key={d.dia} className="day" open={d.hoje}>
-        <summary>
-          {d.dia} {d.hoje && <span className="day-badge">hoje</span>}
-          <span className="chev">›</span>
-        </summary>
-        <div className="day-body">
-          <div className="meal-row">
-            <span className="meal-tag">Almoço</span>
-            {editandoCardapio ? (
-              <input
-                type="text"
-                className="meal-input"
-                value={d.almoco}
-                onChange={(e) => {
-                  const updated = [...cardapio]
-                  updated[idx] = { ...updated[idx], almoco: e.target.value }
-                  setCardapio(updated)
-                }}
-              />
-            ) : (
-              <span className="meal-text">{d.almoco}</span>
-            )}
-          </div>
-          <div className="meal-row">
-            <span className="meal-tag">Jantar</span>
-            {editandoCardapio ? (
-              <input
-                type="text"
-                className="meal-input"
-                value={d.jantar}
-                onChange={(e) => {
-                  const updated = [...cardapio]
-                  updated[idx] = { ...updated[idx], jantar: e.target.value }
-                  setCardapio(updated)
-                }}
-              />
-            ) : (
-              <span className={`meal-text ${d.jantar === 'Livre' ? 'muted' : ''}`}>{d.jantar}</span>
-            )}
-          </div>
-        </div>
-      </details>
-    ))}
-  </section>
-)}
+          <section>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <p className="section-title">Semana</p>
+              <button
+                type="button"
+                className="btn-editar"
+                onClick={() => setEditandoCardapio(!editandoCardapio)}
+              >
+                {editandoCardapio ? '✓ Salvar' : '✎ Editar'}
+              </button>
+            </div>
+            {cardapio.map((d, idx) => (
+              <details key={d.dia} className="day" open={d.hoje}>
+                <summary>
+                  {d.dia} {d.hoje && <span className="day-badge">hoje</span>}
+                  <span className="chev">›</span>
+                </summary>
+                <div className="day-body">
+                  <div className="meal-row">
+                    <span className="meal-tag">Almoço</span>
+                    {editandoCardapio ? (
+                      <input
+                        type="text"
+                        className="meal-input"
+                        value={d.almoco}
+                        onChange={(e) => {
+                          const updated = [...cardapio]
+                          updated[idx] = { ...updated[idx], almoco: e.target.value }
+                          setCardapio(updated)
+                        }}
+                      />
+                    ) : (
+                      <span className="meal-text">{d.almoco}</span>
+                    )}
+                  </div>
+                  <div className="meal-row">
+                    <span className="meal-tag">Jantar</span>
+                    {editandoCardapio ? (
+                      <input
+                        type="text"
+                        className="meal-input"
+                        value={d.jantar}
+                        onChange={(e) => {
+                          const updated = [...cardapio]
+                          updated[idx] = { ...updated[idx], jantar: e.target.value }
+                          setCardapio(updated)
+                        }}
+                      />
+                    ) : (
+                      <span className={`meal-text ${d.jantar === 'Livre' ? 'muted' : ''}`}>{d.jantar}</span>
+                    )}
+                  </div>
+                </div>
+              </details>
+            ))}
+          </section>
+        )}
 
         {tab === 'compras' && (
           <section>
             <div className="note">
-              <p className="note-eyebrow">Lista da semana</p>
-              {comprasPorCategoria.map((cat) => (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <p className="note-eyebrow">Lista da semana</p>
+                <button type="button" className="btn-editar" onClick={() => setMostrarFormCompra(!mostrarFormCompra)}>
+                  {mostrarFormCompra ? '✕ Cancelar' : '+ Adicionar'}
+                </button>
+              </div>
+
+              {mostrarFormCompra && (
+                <div className="form-add">
+                  <input
+                    type="text"
+                    className="meal-input"
+                    placeholder="Nome do item..."
+                    value={novaCompra}
+                    onChange={(e) => setNovaCompra(e.target.value)}
+                  />
+                  <input
+                    type="text"
+                    className="meal-input"
+                    placeholder="Quantidade (opcional)"
+                    value={novaCompraQty}
+                    onChange={(e) => setNovaCompraQty(e.target.value)}
+                    style={{ marginTop: 8 }}
+                  />
+                  <select
+                    className="select-cat"
+                    value={novaCompraCat}
+                    onChange={(e) => setNovaCompraCat(e.target.value)}
+                  >
+                    <option value="">Escolha a categoria...</option>
+                    {compras.map((cat) => (
+                      <option key={cat.categoria} value={cat.categoria}>{cat.categoria}</option>
+                    ))}
+                  </select>
+                  <button type="button" className="btn-confirmar" onClick={adicionarCompra}>Adicionar item</button>
+                </div>
+              )}
+
+              {compras.map((cat, catIdx) => (
                 <div key={cat.categoria}>
                   <p className="section-title">{cat.categoria}</p>
                   {cat.itens.map((item) => (
@@ -283,6 +376,7 @@ useEffect(() => {
                       </span>
                       <span className="shop-text">{item.text}</span>
                       {item.qty && <span className="shop-qty">{item.qty}</span>}
+                      <span className="btn-remover" onClick={() => removerCompra(catIdx, item.id)}>✕</span>
                     </div>
                   ))}
                 </div>
@@ -293,7 +387,47 @@ useEffect(() => {
 
         {tab === 'tarefas' && (
           <section>
-            {tarefasPorCategoria.map((cat) => (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <p className="section-title" style={{ margin: 0 }}>Tarefas</p>
+              <button type="button" className="btn-editar" onClick={() => setMostrarFormTarefa(!mostrarFormTarefa)}>
+                {mostrarFormTarefa ? '✕ Cancelar' : '+ Adicionar'}
+              </button>
+            </div>
+
+            {mostrarFormTarefa && (
+              <div className="form-add note">
+                <input
+                  type="text"
+                  className="meal-input"
+                  placeholder="O que precisa fazer..."
+                  value={novaTarefa}
+                  onChange={(e) => setNovaTarefa(e.target.value)}
+                />
+                <div className="who-picker">
+                  <span
+                    className={`tag diego ${novaTarefaWho === 'diego' ? 'selected' : 'faded'}`}
+                    onClick={() => setNovaTarefaWho('diego')}
+                  >Diego</span>
+                  <span
+                    className={`tag rhania ${novaTarefaWho === 'rhania' ? 'selected' : 'faded'}`}
+                    onClick={() => setNovaTarefaWho('rhania')}
+                  >Rhania</span>
+                </div>
+                <select
+                  className="select-cat"
+                  value={novaTarefaCat}
+                  onChange={(e) => setNovaTarefaCat(e.target.value)}
+                >
+                  <option value="">Escolha a categoria...</option>
+                  {tarefas.map((cat) => (
+                    <option key={cat.categoria} value={cat.categoria}>{cat.categoria}</option>
+                  ))}
+                </select>
+                <button type="button" className="btn-confirmar" onClick={adicionarTarefa}>Adicionar tarefa</button>
+              </div>
+            )}
+
+            {tarefas.map((cat, catIdx) => (
               <div key={cat.categoria}>
                 <p className="section-title">{cat.categoria}</p>
                 <div className="note">
@@ -307,6 +441,7 @@ useEffect(() => {
                         {item.sub && <span className="task-sub">{item.sub}</span>}
                       </span>
                       <Tag who={item.who} />
+                      <span className="btn-remover" onClick={() => removerTarefa(catIdx, item.id)}>✕</span>
                     </div>
                   ))}
                 </div>
