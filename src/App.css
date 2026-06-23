@@ -201,3 +201,5 @@ details.day .meal-row{padding:8px 0;}
   opacity:.4; padding:0 4px; flex-shrink:0;
 }
 .btn-remover:hover{opacity:1; color:#c0392b;}
+.tag.clickable{cursor:pointer; transition:.15s;}
+.tag.clickable:active{transform:scale(.92);}

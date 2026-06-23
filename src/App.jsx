@@ -440,8 +440,26 @@ function App() {
                         {item.text}
                         {item.sub && <span className="task-sub">{item.sub}</span>}
                       </span>
-                      <Tag who={item.who} />
-                      <span className="btn-remover" onClick={() => removerTarefa(catIdx, item.id)}>✕</span>
+                      <span
+  className={`tag ${item.who} clickable`}
+  onClick={() => {
+    const updated = tarefas.map((c, i) => {
+      if (i === catIdx) {
+        return {
+          ...c,
+          itens: c.itens.map((it) =>
+            it.id === item.id ? { ...it, who: it.who === 'diego' ? 'rhania' : 'diego' } : it
+          ),
+        }
+      }
+      return c
+    })
+    setTarefas(updated)
+  }}
+>
+  {item.who === 'diego' ? 'Diego' : 'Rhania'}
+</span>
+<span className="btn-remover" onClick={() => removerTarefa(catIdx, item.id)}>✕</span>
                     </div>
                   ))}
                 </div>
