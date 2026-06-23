@@ -129,6 +129,10 @@ function App() {
   const [novaTarefaWho, setNovaTarefaWho] = useState('diego')
   const [novaTarefaDia, setNovaTarefaDia] = useState('')
   const [novaTarefaCategoria, setNovaTarefaCategoria] = useState('')
+  const [mostrarFormFixa, setMostrarFormFixa] = useState(false)
+  const [novaFixa, setNovaFixa] = useState('')
+  const [novaFixaWho, setNovaFixaWho] = useState('diego')
+  const [novaFixaCategoria, setNovaFixaCategoria] = useState('')
   const [mostrarFormCompra, setMostrarFormCompra] = useState(false)
   const [novaCompra, setNovaCompra] = useState('')
   const [novaCompraQtd, setNovaCompraQtd] = useState('')
@@ -144,9 +148,8 @@ function App() {
   const diaVisivelIdx = (hojeDiaIdx + diaOffset) % 7
   const diaVisivel = diasSemana[diaVisivelIdx]
 
-  function getDiaLabel() {
+ function getDiaLabel() {
     if (diaOffset === 0) return 'Hoje'
-    if (diaOffset === 1) return 'Amanhã'
     return diaVisivel
   }
 
@@ -186,6 +189,15 @@ function App() {
 
   const removerFixa = (id) => {
     setFixas(fixas.filter((t) => t.id !== id))
+  }
+  const adicionarFixa = () => {
+    if (!novaFixa.trim()) return
+    const id = 'fix_' + Date.now()
+    const categoria = novaFixaCategoria.trim() || 'Outras'
+    setFixas([...fixas, { id, text: novaFixa.trim(), who: novaFixaWho, categoria }])
+    setNovaFixa('')
+    setNovaFixaCategoria('')
+    setMostrarFormFixa(false)
   }
 
   const getSemanaKey = (dia, offset) => `sem${offset}_${dia}`
@@ -313,7 +325,7 @@ function App() {
           <section>
             <div className="semana-nav">
               <button type="button" className="semana-btn" onClick={() => setDiaOffset(Math.max(0, diaOffset - 1))}>‹</button>
-              <span className="semana-label">{getDiaLabel()} · {diaVisivel}</span>
+              <span className="semana-label">{getDiaLabel()}</span>
               <button type="button" className="semana-btn" onClick={() => setDiaOffset(Math.min(6, diaOffset + 1))}>›</button>
             </div>
 
@@ -508,7 +520,35 @@ function App() {
 
             {viewTarefas === 'fixas' && (
               <>
-                <p className="section-title">Tarefas que se repetem todo dia</p>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <p className="section-title" style={{ margin: 0 }}>Tarefas que se repetem todo dia</p>
+                  <button type="button" className="btn-editar" onClick={() => setMostrarFormFixa(!mostrarFormFixa)}>
+                    {mostrarFormFixa ? '✕ Cancelar' : '+ Adicionar'}
+                  </button>
+                </div>
+
+                {mostrarFormFixa && (
+                  <div className="form-add note">
+                    <input type="text" className="meal-input" placeholder="O que precisa fazer todo dia..." value={novaFixa} onChange={(e) => setNovaFixa(e.target.value)} />
+                    <div className="who-picker">
+                      <span className={`tag diego ${novaFixaWho === 'diego' ? 'selected' : 'faded'}`} onClick={() => setNovaFixaWho('diego')}>Diego</span>
+                      <span className={`tag rhania ${novaFixaWho === 'rhania' ? 'selected' : 'faded'}`} onClick={() => setNovaFixaWho('rhania')}>Rhania</span>
+                    </div>
+                    <input
+                      type="text"
+                      className="meal-input"
+                      placeholder="Categoria (ex: Cozinha, Cachorros...)"
+                      list="categorias-sugeridas-fixa"
+                      value={novaFixaCategoria}
+                      onChange={(e) => setNovaFixaCategoria(e.target.value)}
+                    />
+                    <datalist id="categorias-sugeridas-fixa">
+                      {categoriasSugeridas.map((c) => (<option key={c} value={c} />))}
+                    </datalist>
+                    <button type="button" className="btn-confirmar" onClick={adicionarFixa}>Adicionar tarefa fixa</button>
+                  </div>
+                )}
+
                 <div className="note">
                   {fixas.map((t) => (
                     <div key={t.id} className={`task-row ${done[t.id] ? 'done' : ''}`}>
