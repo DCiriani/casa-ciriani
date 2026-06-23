@@ -294,3 +294,28 @@ details.day .meal-row{padding:8px 0;}
   margin:14px 0 6px;
 }
 .day-subcat:first-child{margin-top:0;}
+.recorrente-item{
+  padding:10px 0; border-top:1px solid var(--line);
+}
+.recorrente-item:first-child{border-top:none;}
+.recorrente-main{
+  display:flex; align-items:center; gap:10px;
+}
+.recorrente-dias{
+  display:flex; gap:6px; margin:8px 0 0 29px; flex-wrap:wrap;
+}
+.dia-chip{
+  font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:600;
+  padding:5px 10px; border-radius:20px; border:1.6px solid var(--line);
+  background:var(--card); color:var(--ink-soft); cursor:pointer;
+  text-transform:uppercase;
+}
+.dia-chip.selected{
+  background:var(--diego); border-color:var(--diego); color:#fff;
+}
+.dia-chip.small{
+  font-size:10px; padding:3px 8px;
+}
+.dia-chips-row{
+  display:flex; flex-wrap:wrap; gap:6px;
+}

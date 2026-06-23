@@ -13,7 +13,7 @@ const cardapioInicial = [
   { dia: 'Domingo', almoco: 'Nhoque, carne moída', jantar: 'Livre' },
 ]
 
-const tarefasFixas = [
+const tarefasFixasIniciais = [
   { id: 'g1', text: 'Gertrudes — antes da 1ª soneca', who: 'diego', categoria: 'Gertrudes' },
   { id: 'c1', text: 'Catar cocô da garagem', who: 'rhania', categoria: 'Cachorros' },
   { id: 'c2', text: 'Lavar a garagem', who: 'diego', categoria: 'Cachorros' },
@@ -120,8 +120,9 @@ function App() {
   const [loading, setLoading] = useState(true)
   const [cardapio, setCardapio] = useState(cardapioInicial)
   const [editandoCardapio, setEditandoCardapio] = useState(false)
-  const [fixas, setFixas] = useState(tarefasFixas)
+  const [fixas, setFixas] = useState(tarefasFixasIniciais)
   const [tarefasSemana, setTarefasSemana] = useState({})
+  const [recorrentes, setRecorrentes] = useState([])
   const [compras, setCompras] = useState(comprasIniciais)
   const [semanaOffset, setSemanaOffset] = useState(0)
   const [mostrarFormTarefa, setMostrarFormTarefa] = useState(false)
@@ -133,6 +134,11 @@ function App() {
   const [novaFixa, setNovaFixa] = useState('')
   const [novaFixaWho, setNovaFixaWho] = useState('diego')
   const [novaFixaCategoria, setNovaFixaCategoria] = useState('')
+  const [mostrarFormRecorrente, setMostrarFormRecorrente] = useState(false)
+  const [novaRecorrente, setNovaRecorrente] = useState('')
+  const [novaRecorrenteWho, setNovaRecorrenteWho] = useState('diego')
+  const [novaRecorrenteCategoria, setNovaRecorrenteCategoria] = useState('')
+  const [novaRecorrenteDias, setNovaRecorrenteDias] = useState([])
   const [mostrarFormCompra, setMostrarFormCompra] = useState(false)
   const [novaCompra, setNovaCompra] = useState('')
   const [novaCompraQtd, setNovaCompraQtd] = useState('')
@@ -148,7 +154,7 @@ function App() {
   const diaVisivelIdx = (hojeDiaIdx + diaOffset) % 7
   const diaVisivel = diasSemana[diaVisivelIdx]
 
- function getDiaLabel() {
+  function getDiaLabel() {
     if (diaOffset === 0) return 'Hoje'
     return diaVisivel
   }
@@ -163,6 +169,8 @@ function App() {
       if (savedFixas) setFixas(JSON.parse(savedFixas))
       const savedSemana = localStorage.getItem('casaCiriani_tarefasSemana')
       if (savedSemana) setTarefasSemana(JSON.parse(savedSemana))
+      const savedRecorrentes = localStorage.getItem('casaCiriani_recorrentes')
+      if (savedRecorrentes) setRecorrentes(JSON.parse(savedRecorrentes))
       const savedCompras = localStorage.getItem('casaCiriani_compras2')
       if (savedCompras) setCompras(JSON.parse(savedCompras))
     } catch (error) {
@@ -175,6 +183,7 @@ function App() {
   useEffect(() => { localStorage.setItem('casaCiriani_cardapio', JSON.stringify(cardapio)) }, [cardapio])
   useEffect(() => { localStorage.setItem('casaCiriani_fixas', JSON.stringify(fixas)) }, [fixas])
   useEffect(() => { localStorage.setItem('casaCiriani_tarefasSemana', JSON.stringify(tarefasSemana)) }, [tarefasSemana])
+  useEffect(() => { localStorage.setItem('casaCiriani_recorrentes', JSON.stringify(recorrentes)) }, [recorrentes])
   useEffect(() => { localStorage.setItem('casaCiriani_compras2', JSON.stringify(compras)) }, [compras])
 
   const toggle = (id) => {
@@ -190,6 +199,7 @@ function App() {
   const removerFixa = (id) => {
     setFixas(fixas.filter((t) => t.id !== id))
   }
+
   const adicionarFixa = () => {
     if (!novaFixa.trim()) return
     const id = 'fix_' + Date.now()
@@ -231,6 +241,40 @@ function App() {
       t.id === itemId ? { ...t, who: t.who === 'diego' ? 'rhania' : 'diego' } : t
     )
     setTarefasSemana({ ...tarefasSemana, [key]: novaLista })
+  }
+
+  // Recorrentes: tarefas fixas que só valem em certos dias da semana (ex: lixeiro seg/qua)
+  const getRecorrentesDia = (dia) => recorrentes.filter((r) => r.dias.includes(dia))
+
+  const toggleNovaRecorrenteDia = (dia) => {
+    setNovaRecorrenteDias((prev) => prev.includes(dia) ? prev.filter((d) => d !== dia) : [...prev, dia])
+  }
+
+  const adicionarRecorrente = () => {
+    if (!novaRecorrente.trim() || novaRecorrenteDias.length === 0) return
+    const id = 'rec_' + Date.now()
+    const categoria = novaRecorrenteCategoria.trim() || 'Outras'
+    setRecorrentes([...recorrentes, { id, text: novaRecorrente.trim(), who: novaRecorrenteWho, categoria, dias: novaRecorrenteDias }])
+    setNovaRecorrente('')
+    setNovaRecorrenteCategoria('')
+    setNovaRecorrenteDias([])
+    setMostrarFormRecorrente(false)
+  }
+
+  const removerRecorrente = (id) => {
+    setRecorrentes(recorrentes.filter((r) => r.id !== id))
+  }
+
+  const toggleRecorrenteWho = (id) => {
+    setRecorrentes(recorrentes.map((r) => r.id === id ? { ...r, who: r.who === 'diego' ? 'rhania' : 'diego' } : r))
+  }
+
+  const toggleRecorrenteDia = (id, dia) => {
+    setRecorrentes(recorrentes.map((r) => {
+      if (r.id !== id) return r
+      const dias = r.dias.includes(dia) ? r.dias.filter((d) => d !== dia) : [...r.dias, dia]
+      return { ...r, dias }
+    }))
   }
 
   const adicionarCompra = () => {
@@ -285,12 +329,14 @@ function App() {
 
   const hojeCardapio = cardapio[diaVisivelIdx] || cardapio[0]
   const tarefasExtraDia = getTarefasDia(diaVisivel, 0)
+  const recorrentesDoDia = getRecorrentesDia(diaVisivel)
 
-  // Categorias sugeridas: as fixas + as já usadas em tarefas extras + algumas padrão
+  // Categorias sugeridas: fixas + extras já usadas + recorrentes + algumas padrão
   const categoriasSugeridas = (() => {
     const set = new Set(['Gertrudes', 'Cachorros', 'Cozinha', 'Lixo', 'Roupa', 'Cata na casa', 'Compras', 'Outras'])
     fixas.forEach((t) => set.add(t.categoria))
     Object.values(tarefasSemana).forEach((lista) => lista.forEach((t) => { if (t.categoria) set.add(t.categoria) }))
+    recorrentes.forEach((r) => set.add(r.categoria))
     return Array.from(set)
   })()
 
@@ -352,7 +398,28 @@ function App() {
                         <CheckIcon />
                       </span>
                       <span className="task-text">{t.text}</span>
-                      <span className={`tag ${t.who}`}>{t.who === 'diego' ? 'Diego' : 'Rhania'}</span>
+                      <span className={`tag ${t.who} clickable`} onClick={() => toggleFixaWho(t.id)}>
+                        {t.who === 'diego' ? 'Diego' : 'Rhania'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+
+            {agruparPorCategoria(recorrentesDoDia).map((grupo) => (
+              <div key={'rec_' + grupo.categoria}>
+                <p className="section-title">{grupo.categoria} · fixo da semana</p>
+                <div className="note">
+                  {grupo.itens.map((t) => (
+                    <div key={t.id} className={`task-row ${done[t.id] ? 'done' : ''}`}>
+                      <span className={`check ${done[t.id] ? 'checked' : ''}`} onClick={() => toggle(t.id)}>
+                        <CheckIcon />
+                      </span>
+                      <span className="task-text">{t.text}</span>
+                      <span className={`tag ${t.who} clickable`} onClick={() => toggleRecorrenteWho(t.id)}>
+                        {t.who === 'diego' ? 'Diego' : 'Rhania'}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -369,7 +436,9 @@ function App() {
                         <CheckIcon />
                       </span>
                       <span className="task-text">{t.text}</span>
-                      <span className={`tag ${t.who}`}>{t.who === 'diego' ? 'Diego' : 'Rhania'}</span>
+                      <span className={`tag ${t.who} clickable`} onClick={() => toggleTarefaSemanaWho(diaVisivel, 0, t.id)}>
+                        {t.who === 'diego' ? 'Diego' : 'Rhania'}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -515,7 +584,8 @@ function App() {
           <section>
             <div className="view-toggle">
               <button type="button" className={`view-btn ${viewTarefas === 'dia' ? 'active' : ''}`} onClick={() => setViewTarefas('dia')}>Por dia</button>
-              <button type="button" className={`view-btn ${viewTarefas === 'fixas' ? 'active' : ''}`} onClick={() => setViewTarefas('fixas')}>Fixas (diárias)</button>
+              <button type="button" className={`view-btn ${viewTarefas === 'fixas' ? 'active' : ''}`} onClick={() => setViewTarefas('fixas')}>Fixas diárias</button>
+              <button type="button" className={`view-btn ${viewTarefas === 'recorrentes' ? 'active' : ''}`} onClick={() => setViewTarefas('recorrentes')}>Fixas da semana</button>
             </div>
 
             {viewTarefas === 'fixas' && (
@@ -560,6 +630,84 @@ function App() {
                         {t.who === 'diego' ? 'Diego' : 'Rhania'}
                       </span>
                       <span className="btn-remover" onClick={() => removerFixa(t.id)}>✕</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {viewTarefas === 'recorrentes' && (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <p className="section-title" style={{ margin: 0 }}>Fixas em dias específicos</p>
+                  <button type="button" className="btn-editar" onClick={() => setMostrarFormRecorrente(!mostrarFormRecorrente)}>
+                    {mostrarFormRecorrente ? '✕ Cancelar' : '+ Adicionar'}
+                  </button>
+                </div>
+                <p className="empty-msg" style={{ marginTop: 4 }}>Ex: "dia do lixeiro" toda Segunda e Quarta</p>
+
+                {mostrarFormRecorrente && (
+                  <div className="form-add note">
+                    <input type="text" className="meal-input" placeholder="O que precisa fazer..." value={novaRecorrente} onChange={(e) => setNovaRecorrente(e.target.value)} />
+                    <div className="who-picker">
+                      <span className={`tag diego ${novaRecorrenteWho === 'diego' ? 'selected' : 'faded'}`} onClick={() => setNovaRecorrenteWho('diego')}>Diego</span>
+                      <span className={`tag rhania ${novaRecorrenteWho === 'rhania' ? 'selected' : 'faded'}`} onClick={() => setNovaRecorrenteWho('rhania')}>Rhania</span>
+                    </div>
+                    <input
+                      type="text"
+                      className="meal-input"
+                      placeholder="Categoria (ex: Lixo, Cozinha...)"
+                      list="categorias-sugeridas-rec"
+                      value={novaRecorrenteCategoria}
+                      onChange={(e) => setNovaRecorrenteCategoria(e.target.value)}
+                    />
+                    <datalist id="categorias-sugeridas-rec">
+                      {categoriasSugeridas.map((c) => (<option key={c} value={c} />))}
+                    </datalist>
+                    <p className="empty-msg" style={{ margin: '4px 0 0' }}>Em quais dias se repete:</p>
+                    <div className="dia-chips-row">
+                      {diasSemana.map((d) => (
+                        <span
+                          key={d}
+                          className={`dia-chip ${novaRecorrenteDias.includes(d) ? 'selected' : ''}`}
+                          onClick={() => toggleNovaRecorrenteDia(d)}
+                        >
+                          {d.slice(0, 3)}
+                        </span>
+                      ))}
+                    </div>
+                    <button type="button" className="btn-confirmar" onClick={adicionarRecorrente}>Adicionar tarefa fixa da semana</button>
+                  </div>
+                )}
+
+                {recorrentes.length === 0 && (
+                  <p className="empty-msg">Nenhuma tarefa fixa por dia da semana ainda</p>
+                )}
+
+                <div className="note">
+                  {recorrentes.map((r) => (
+                    <div key={r.id} className="recorrente-item">
+                      <div className="recorrente-main">
+                        <span className={`check ${done[r.id] ? 'checked' : ''}`} onClick={() => toggle(r.id)}>
+                          <CheckIcon />
+                        </span>
+                        <span className="task-text">{r.text}</span>
+                        <span className={`tag ${r.who} clickable`} onClick={() => toggleRecorrenteWho(r.id)}>
+                          {r.who === 'diego' ? 'Diego' : 'Rhania'}
+                        </span>
+                        <span className="btn-remover" onClick={() => removerRecorrente(r.id)}>✕</span>
+                      </div>
+                      <div className="recorrente-dias">
+                        {diasSemana.map((d) => (
+                          <span
+                            key={d}
+                            className={`dia-chip small ${r.dias.includes(d) ? 'selected' : ''}`}
+                            onClick={() => toggleRecorrenteDia(r.id, d)}
+                          >
+                            {d.slice(0, 3)}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                   ))}
                 </div>
