@@ -165,6 +165,15 @@ function App() {
   const [viewTarefas, setViewTarefas] = useState('dia')
   const [diaOffset, setDiaOffset] = useState(0)
   const [notifStatus, setNotifStatus] = useState(typeof Notification !== 'undefined' ? Notification.permission : 'unsupported')
+  const [viewCompras, setViewCompras] = useState('geral')
+  const [comprasSemana, setComprasSemana] = useState({})
+  const [semanaOffsetCompras, setSemanaOffsetCompras] = useState(0)
+  const [mostrarFormCompraDia, setMostrarFormCompraDia] = useState(false)
+  const [novaCompraDiaTexto, setNovaCompraDiaTexto] = useState('')
+  const [novaCompraDiaQtd, setNovaCompraDiaQtd] = useState('')
+  const [novaCompraDiaUnidade, setNovaCompraDiaUnidade] = useState('un')
+  const [novaCompraDiaObs, setNovaCompraDiaObs] = useState('')
+  const [novaCompraDiaDia, setNovaCompraDiaDia] = useState('')
 
   const hojeDiaIdx = getHojeDia()
   const hojeDia = diasSemana[hojeDiaIdx]
@@ -202,6 +211,7 @@ function App() {
             if (data.tarefasSemana) setTarefasSemana(data.tarefasSemana)
             if (data.recorrentes) setRecorrentes(data.recorrentes)
             if (data.compras) setCompras(data.compras)
+            if (data.comprasSemana) setComprasSemana(data.comprasSemana)
           } else {
             // primeira vez: usa o que já estava salvo neste celular como ponto de partida
             const inicial = {
@@ -211,6 +221,7 @@ function App() {
               tarefasSemana: lerLocalAntigo('casaCiriani_tarefasSemana', {}),
               recorrentes: lerLocalAntigo('casaCiriani_recorrentes', []),
               compras: lerLocalAntigo('casaCiriani_compras2', comprasIniciais),
+              comprasSemana: {},
             }
             try {
               await setDoc(estadoRef, inicial)
@@ -407,6 +418,42 @@ function App() {
     })
     setCompras(updated)
     salvarCampo('compras', updated)
+  }
+
+  const getComprasSemanaKey = (dia, offset) => `csem${offset}_${dia}`
+
+  const getComprasDia = (dia, offset) => {
+    const key = getComprasSemanaKey(dia, offset)
+    return comprasSemana[key] || []
+  }
+
+  const adicionarCompraDia = () => {
+    if (!novaCompraDiaTexto.trim() || !novaCompraDiaDia) return
+    const key = getComprasSemanaKey(novaCompraDiaDia, semanaOffsetCompras)
+    const id = 'cs_' + Date.now()
+    const novaLista = [...(comprasSemana[key] || []), {
+      id,
+      text: novaCompraDiaTexto.trim(),
+      qtd: Number(novaCompraDiaQtd) || 1,
+      unidade: novaCompraDiaUnidade,
+      obs: novaCompraDiaObs.trim() || undefined,
+    }]
+    const updated = { ...comprasSemana, [key]: novaLista }
+    setComprasSemana(updated)
+    salvarCampo('comprasSemana', updated)
+    setNovaCompraDiaTexto('')
+    setNovaCompraDiaQtd('')
+    setNovaCompraDiaUnidade('un')
+    setNovaCompraDiaObs('')
+    setMostrarFormCompraDia(false)
+  }
+
+  const removerCompraDia = (dia, offset, itemId) => {
+    const key = getComprasSemanaKey(dia, offset)
+    const novaLista = (comprasSemana[key] || []).filter((it) => it.id !== itemId)
+    const updated = { ...comprasSemana, [key]: novaLista }
+    setComprasSemana(updated)
+    salvarCampo('comprasSemana', updated)
   }
 
   const editarCardapio = (idx, campo, valor) => {
@@ -614,85 +661,160 @@ function App() {
 
         {tab === 'compras' && (
           <section>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <p className="section-title" style={{ margin: 0 }}>Lista de compras</p>
-              <button type="button" className="btn-editar" onClick={() => setMostrarFormCompra(!mostrarFormCompra)}>
-                {mostrarFormCompra ? '✕ Cancelar' : '+ Adicionar'}
-              </button>
+            <div className="view-toggle">
+              <button type="button" className={`view-btn ${viewCompras === 'geral' ? 'active' : ''}`} onClick={() => setViewCompras('geral')}>Lista geral</button>
+              <button type="button" className={`view-btn ${viewCompras === 'dia' ? 'active' : ''}`} onClick={() => setViewCompras('dia')}>Por dia da semana</button>
             </div>
 
-            {mostrarFormCompra && (
-              <div className="form-add note">
-                <input type="text" className="meal-input" placeholder="Nome do item..." value={novaCompra} onChange={(e) => setNovaCompra(e.target.value)} />
-                <div className="compra-qty-row">
-                  <input type="number" className="input-qtd" placeholder="Qtd" value={novaCompraQtd} onChange={(e) => setNovaCompraQtd(e.target.value)} />
-                  <select className="select-unidade" value={novaCompraUnidade} onChange={(e) => setNovaCompraUnidade(e.target.value)}>
-                    {unidades.map((u) => (<option key={u} value={u}>{u}</option>))}
-                  </select>
+            {viewCompras === 'geral' && (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <p className="section-title" style={{ margin: 0 }}>Lista de compras</p>
+                  <button type="button" className="btn-editar" onClick={() => setMostrarFormCompra(!mostrarFormCompra)}>
+                    {mostrarFormCompra ? '✕ Cancelar' : '+ Adicionar'}
+                  </button>
                 </div>
-                <input type="text" className="meal-input" placeholder="Observação (opcional, ex: pronto pra uso)" value={novaCompraObs} onChange={(e) => setNovaCompraObs(e.target.value)} />
-                <select className="select-cat" value={novaCompraCat} onChange={(e) => setNovaCompraCat(e.target.value)}>
-                  <option value="">Escolha a categoria...</option>
-                  {compras.map((cat) => (<option key={cat.categoria} value={cat.categoria}>{cat.categoria}</option>))}
-                </select>
-                <button type="button" className="btn-confirmar" onClick={adicionarCompra}>Adicionar item</button>
-              </div>
+
+                {mostrarFormCompra && (
+                  <div className="form-add note">
+                    <input type="text" className="meal-input" placeholder="Nome do item..." value={novaCompra} onChange={(e) => setNovaCompra(e.target.value)} />
+                    <div className="compra-qty-row">
+                      <input type="number" className="input-qtd" placeholder="Qtd" value={novaCompraQtd} onChange={(e) => setNovaCompraQtd(e.target.value)} />
+                      <select className="select-unidade" value={novaCompraUnidade} onChange={(e) => setNovaCompraUnidade(e.target.value)}>
+                        {unidades.map((u) => (<option key={u} value={u}>{u}</option>))}
+                      </select>
+                    </div>
+                    <input type="text" className="meal-input" placeholder="Observação (opcional, ex: pronto pra uso)" value={novaCompraObs} onChange={(e) => setNovaCompraObs(e.target.value)} />
+                    <select className="select-cat" value={novaCompraCat} onChange={(e) => setNovaCompraCat(e.target.value)}>
+                      <option value="">Escolha a categoria...</option>
+                      {compras.map((cat) => (<option key={cat.categoria} value={cat.categoria}>{cat.categoria}</option>))}
+                    </select>
+                    <button type="button" className="btn-confirmar" onClick={adicionarCompra}>Adicionar item</button>
+                  </div>
+                )}
+
+                {compras.map((cat, catIdx) => (
+                  <div key={cat.categoria}>
+                    <p className="section-title">{cat.categoria}</p>
+                    <div className="note">
+                      {cat.itens.map((item) => {
+                        const isEditing = editandoItem === item.id
+                        return (
+                          <div key={item.id} className={`shop-item ${done[item.id] ? 'done' : ''}`}>
+                            <div className="shop-item-main">
+                              <span className={`check ${done[item.id] ? 'checked' : ''}`} onClick={() => toggle(item.id)}>
+                                <CheckIcon />
+                              </span>
+                              <span className="shop-text">{item.text}</span>
+                              <span className="shop-badge">{formatQtd(item.qtd, item.unidade)}</span>
+                              <span className="btn-edit-item" onClick={() => setEditandoItem(isEditing ? null : item.id)}>
+                                {isEditing ? '✓' : '✎'}
+                              </span>
+                              <span className="btn-remover" onClick={() => removerCompra(catIdx, item.id)}>✕</span>
+                            </div>
+                            {item.obs && !isEditing && (
+                              <p className="shop-obs">{item.obs}</p>
+                            )}
+                            {isEditing && (
+                              <div className="shop-edit-form">
+                                <div className="compra-qty-row">
+                                  <input
+                                    type="number"
+                                    className="input-qtd"
+                                    value={item.qtd}
+                                    onChange={(e) => salvarEdicao(catIdx, item.id, 'qtd', e.target.value)}
+                                  />
+                                  <select
+                                    className="select-unidade"
+                                    value={item.unidade}
+                                    onChange={(e) => salvarEdicao(catIdx, item.id, 'unidade', e.target.value)}
+                                  >
+                                    {unidades.map((u) => (<option key={u} value={u}>{u}</option>))}
+                                  </select>
+                                </div>
+                                <input
+                                  type="text"
+                                  className="meal-input"
+                                  placeholder="Observação (opcional)"
+                                  value={item.obs || ''}
+                                  onChange={(e) => salvarEdicao(catIdx, item.id, 'obs', e.target.value)}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </>
             )}
 
-            {compras.map((cat, catIdx) => (
-              <div key={cat.categoria}>
-                <p className="section-title">{cat.categoria}</p>
-                <div className="note">
-                  {cat.itens.map((item) => {
-                    const isEditing = editandoItem === item.id
-                    return (
-                      <div key={item.id} className={`shop-item ${done[item.id] ? 'done' : ''}`}>
-                        <div className="shop-item-main">
-                          <span className={`check ${done[item.id] ? 'checked' : ''}`} onClick={() => toggle(item.id)}>
-                            <CheckIcon />
-                          </span>
-                          <span className="shop-text">{item.text}</span>
-                          <span className="shop-badge">{formatQtd(item.qtd, item.unidade)}</span>
-                          <span className="btn-edit-item" onClick={() => setEditandoItem(isEditing ? null : item.id)}>
-                            {isEditing ? '✓' : '✎'}
-                          </span>
-                          <span className="btn-remover" onClick={() => removerCompra(catIdx, item.id)}>✕</span>
-                        </div>
-                        {item.obs && !isEditing && (
-                          <p className="shop-obs">{item.obs}</p>
-                        )}
-                        {isEditing && (
-                          <div className="shop-edit-form">
-                            <div className="compra-qty-row">
-                              <input
-                                type="number"
-                                className="input-qtd"
-                                value={item.qtd}
-                                onChange={(e) => salvarEdicao(catIdx, item.id, 'qtd', e.target.value)}
-                              />
-                              <select
-                                className="select-unidade"
-                                value={item.unidade}
-                                onChange={(e) => salvarEdicao(catIdx, item.id, 'unidade', e.target.value)}
-                              >
-                                {unidades.map((u) => (<option key={u} value={u}>{u}</option>))}
-                              </select>
-                            </div>
-                            <input
-                              type="text"
-                              className="meal-input"
-                              placeholder="Observação (opcional)"
-                              value={item.obs || ''}
-                              onChange={(e) => salvarEdicao(catIdx, item.id, 'obs', e.target.value)}
-                            />
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
+            {viewCompras === 'dia' && (
+              <>
+                <div className="semana-nav">
+                  <button type="button" className="semana-btn" onClick={() => setSemanaOffsetCompras(Math.max(0, semanaOffsetCompras - 1))}>‹</button>
+                  <span className="semana-label">{getSemanaLabel(semanaOffsetCompras)}</span>
+                  <button type="button" className="semana-btn" onClick={() => setSemanaOffsetCompras(semanaOffsetCompras + 1)}>›</button>
                 </div>
-              </div>
-            ))}
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+                  <button type="button" className="btn-editar" onClick={() => setMostrarFormCompraDia(!mostrarFormCompraDia)}>
+                    {mostrarFormCompraDia ? '✕ Cancelar' : '+ Adicionar'}
+                  </button>
+                </div>
+
+                {mostrarFormCompraDia && (
+                  <div className="form-add note">
+                    <input type="text" className="meal-input" placeholder="Nome do item..." value={novaCompraDiaTexto} onChange={(e) => setNovaCompraDiaTexto(e.target.value)} />
+                    <div className="compra-qty-row">
+                      <input type="number" className="input-qtd" placeholder="Qtd" value={novaCompraDiaQtd} onChange={(e) => setNovaCompraDiaQtd(e.target.value)} />
+                      <select className="select-unidade" value={novaCompraDiaUnidade} onChange={(e) => setNovaCompraDiaUnidade(e.target.value)}>
+                        {unidades.map((u) => (<option key={u} value={u}>{u}</option>))}
+                      </select>
+                    </div>
+                    <input type="text" className="meal-input" placeholder="Observação (opcional)" value={novaCompraDiaObs} onChange={(e) => setNovaCompraDiaObs(e.target.value)} />
+                    <select className="select-cat" value={novaCompraDiaDia} onChange={(e) => setNovaCompraDiaDia(e.target.value)}>
+                      <option value="">Escolha o dia...</option>
+                      {diasSemana.map((d) => (<option key={d} value={d}>{d}</option>))}
+                    </select>
+                    <button type="button" className="btn-confirmar" onClick={adicionarCompraDia}>Adicionar compra</button>
+                  </div>
+                )}
+
+                {diasSemana.map((dia, idx) => {
+                  const itensDoDia = getComprasDia(dia, semanaOffsetCompras)
+                  const isHoje = idx === hojeDiaIdx && semanaOffsetCompras === 0
+                  return (
+                    <details key={dia} className="day" open={isHoje}>
+                      <summary>
+                        {dia} {isHoje && <span className="day-badge">hoje</span>}
+                        {itensDoDia.length > 0 && <span className="day-count">{itensDoDia.length}</span>}
+                        <span className="chev">›</span>
+                      </summary>
+                      <div className="day-body">
+                        {itensDoDia.length === 0 && (
+                          <p className="empty-msg">Nenhuma compra agendada pra esse dia</p>
+                        )}
+                        {itensDoDia.map((item) => (
+                          <div key={item.id} className={`shop-item ${done[item.id] ? 'done' : ''}`}>
+                            <div className="shop-item-main">
+                              <span className={`check ${done[item.id] ? 'checked' : ''}`} onClick={() => toggle(item.id)}>
+                                <CheckIcon />
+                              </span>
+                              <span className="shop-text">{item.text}</span>
+                              <span className="shop-badge">{formatQtd(item.qtd, item.unidade)}</span>
+                              <span className="btn-remover" onClick={() => removerCompraDia(dia, semanaOffsetCompras, item.id)}>✕</span>
+                            </div>
+                            {item.obs && (<p className="shop-obs">{item.obs}</p>)}
+                          </div>
+                        ))}
+                      </div>
+                    </details>
+                  )
+                })}
+              </>
+            )}
           </section>
         )}
 
