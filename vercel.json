@@ -2,6 +2,7 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "crons": [
-    { "path": "/api/notificar", "schedule": "30 11 * * *" }
+    { "path": "/api/notificar", "schedule": "30 11 * * *" },
+    { "path": "/api/agenda-diaria", "schedule": "30 9 * * 1-5" }
   ]
 }
