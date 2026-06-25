@@ -496,9 +496,17 @@ function App() {
 
   const ativarNotificacoes = async () => {
     try {
+      if (Notification.permission === 'denied') {
+        alert('As notificações estão bloqueadas pra esse app. Vá nas configurações do navegador/celular e permita notificações pro Casa Ciriani manualmente, depois recarregue a página.')
+        return
+      }
+
       const permissao = await Notification.requestPermission()
       setNotifStatus(permissao)
-      if (permissao !== 'granted') return
+      if (permissao !== 'granted') {
+        alert('Permissão não concedida: ' + permissao)
+        return
+      }
 
       const messaging = await getMessagingIfSupported()
       if (!messaging) {
@@ -514,9 +522,13 @@ function App() {
 
       if (token) {
         await setDoc(doc(db, 'tokens', token), { criadoEm: Date.now() })
+        alert('Notificações ativadas com sucesso!')
+      } else {
+        alert('Não foi possível gerar o código de notificação (token vazio).')
       }
     } catch (error) {
       console.error('Erro ao ativar notificações:', error)
+      alert('Erro ao ativar notificações: ' + error.message)
     }
   }
 
