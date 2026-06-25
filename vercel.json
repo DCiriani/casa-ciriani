@@ -1,4 +1,7 @@
 {
   "buildCommand": "npm run build",
-  "outputDirectory": "dist"
+  "outputDirectory": "dist",
+  "crons": [
+    { "path": "/api/notificar", "schedule": "30 11 * * *" }
+  ]
 }

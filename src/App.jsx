@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { doc, onSnapshot, setDoc } from 'firebase/firestore'
 import { signInAnonymously, onAuthStateChanged } from 'firebase/auth'
-import { db, auth } from './firebase'
+import { getToken } from 'firebase/messaging'
+import { db, auth, getMessagingIfSupported } from './firebase'
 import './App.css'
 
 const estadoRef = doc(db, 'estado', 'casa')
@@ -163,6 +164,7 @@ function App() {
   const [editandoItem, setEditandoItem] = useState(null)
   const [viewTarefas, setViewTarefas] = useState('dia')
   const [diaOffset, setDiaOffset] = useState(0)
+  const [notifStatus, setNotifStatus] = useState(typeof Notification !== 'undefined' ? Notification.permission : 'unsupported')
 
   const hojeDiaIdx = getHojeDia()
   const hojeDia = diasSemana[hojeDiaIdx]
@@ -310,7 +312,7 @@ function App() {
   }
 
   const getRecorrentesDia = (dia) => recorrentes.filter((r) => r.dias.includes(dia))
-
+const getDoneKeyRecorrente = (recorrenteId, dia) => `${recorrenteId}_${dia}`
   const toggleNovaRecorrenteDia = (dia) => {
     setNovaRecorrenteDias((prev) => prev.includes(dia) ? prev.filter((d) => d !== dia) : [...prev, dia])
   }
@@ -412,6 +414,32 @@ function App() {
     salvarCampo('cardapio', updated)
   }
 
+  const ativarNotificacoes = async () => {
+    try {
+      const permissao = await Notification.requestPermission()
+      setNotifStatus(permissao)
+      if (permissao !== 'granted') return
+
+      const messaging = await getMessagingIfSupported()
+      if (!messaging) {
+        alert('Esse navegador não suporta notificações.')
+        return
+      }
+
+      const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js')
+      const token = await getToken(messaging, {
+        vapidKey: 'BChvt77hYyOr3HV5-b23aW-6T-iqsNQt6NZOA5K5yHOT7aGqNTYJvz8s6jrfRkZkJM4V8kgSlgmeKPumfNQLFXo',
+        serviceWorkerRegistration: registration,
+      })
+
+      if (token) {
+        await setDoc(doc(db, 'tokens', token), { criadoEm: Date.now() })
+      }
+    } catch (error) {
+      console.error('Erro ao ativar notificações:', error)
+    }
+  }
+
   const hojeCardapio = cardapio[diaVisivelIdx] || cardapio[0]
   const tarefasExtraDia = getTarefasDia(diaVisivel, 0)
   const recorrentesDoDia = getRecorrentesDia(diaVisivel)
@@ -446,6 +474,11 @@ function App() {
           <h1>Oi, Diego &amp; Rhania</h1>
           <p>{hojeDia}-feira · {new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' })}</p>
         </div>
+        {notifStatus !== 'granted' && notifStatus !== 'unsupported' && (
+          <button type="button" className="btn-editar" onClick={ativarNotificacoes} style={{ marginTop: 8 }}>
+            🔔 Ativar avisos de tarefas pendentes
+          </button>
+        )}
       </header>
 
       <main className="screens">
@@ -475,9 +508,11 @@ function App() {
               <div key={cat}>
                 <p className="section-title">{cat}</p>
                 <div className="note">
-                  {catMap[cat].map((t) => (
-                    <div key={t.id} className={`task-row ${done[t.id] ? 'done' : ''}`}>
-                      <span className={`check ${done[t.id] ? 'checked' : ''}`} onClick={() => toggle(t.id)}>
+                  {catMap[cat].map((t) => {
+                    const doneKey = getDoneKeyRecorrente(t.id, diaVisivel)
+                    return (
+                    <div key={t.id} className={`task-row ${done[doneKey] ? 'done' : ''}`}>
+                      <span className={`check ${done[doneKey] ? 'checked' : ''}`} onClick={() => toggle(doneKey)}>
                         <CheckIcon />
                       </span>
                       <span className="task-text">{t.text}</span>
@@ -485,7 +520,8 @@ function App() {
                         {t.who === 'diego' ? 'Diego' : 'Rhania'}
                       </span>
                     </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
             ))}
@@ -494,9 +530,11 @@ function App() {
               <div key={'rec_' + grupo.categoria}>
                 <p className="section-title">{grupo.categoria} · fixo da semana</p>
                 <div className="note">
-                  {grupo.itens.map((t) => (
-                    <div key={t.id} className={`task-row ${done[t.id] ? 'done' : ''}`}>
-                      <span className={`check ${done[t.id] ? 'checked' : ''}`} onClick={() => toggle(t.id)}>
+                  {grupo.itens.map((t) => {
+                    const doneKey = getDoneKeyRecorrente(t.id, diaVisivel)
+                    return (
+                    <div key={doneKey} className={`task-row ${done[doneKey] ? 'done' : ''}`}>
+                      <span className={`check ${done[doneKey] ? 'checked' : ''}`} onClick={() => toggle(doneKey)}>
                         <CheckIcon />
                       </span>
                       <span className="task-text">{t.text}</span>
@@ -523,7 +561,8 @@ function App() {
                         {t.who === 'diego' ? 'Diego' : 'Rhania'}
                       </span>
                     </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
             ))}
@@ -695,9 +734,11 @@ function App() {
                 )}
 
                 <div className="note">
-                  {fixas.map((t) => (
-                    <div key={t.id} className={`task-row ${done[t.id] ? 'done' : ''}`}>
-                      <span className={`check ${done[t.id] ? 'checked' : ''}`} onClick={() => toggle(t.id)}>
+                  {fixas.map((t) => {
+                    const doneKey = getDoneKeyRecorrente(t.id, hojeDia)
+                    return (
+                    <div key={t.id} className={`task-row ${done[doneKey] ? 'done' : ''}`}>
+                      <span className={`check ${done[doneKey] ? 'checked' : ''}`} onClick={() => toggle(doneKey)}>
                         <CheckIcon />
                       </span>
                       <span className="task-text">{t.text}</span>
@@ -706,7 +747,8 @@ function App() {
                       </span>
                       <span className="btn-remover" onClick={() => removerFixa(t.id)}>✕</span>
                     </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </>
             )}
