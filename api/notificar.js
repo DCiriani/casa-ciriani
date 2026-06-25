@@ -1,10 +1,12 @@
-import admin from 'firebase-admin'
+import { initializeApp, getApps, cert } from 'firebase-admin/app'
+import { getFirestore } from 'firebase-admin/firestore'
+import { getMessaging } from 'firebase-admin/messaging'
 
 const diasSemana = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo']
 
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert({
+if (!getApps().length) {
+  initializeApp({
+    credential: cert({
       projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
       clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
       privateKey: (process.env.FIREBASE_ADMIN_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
@@ -12,7 +14,7 @@ if (!admin.apps.length) {
   })
 }
 
-const db = admin.firestore()
+const db = getFirestore()
 
 function getHojeDia() {
   const partes = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Sao_Paulo', weekday: 'short' }).format(new Date())
@@ -63,7 +65,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, pendentes, enviado: false, motivo: 'sem tokens cadastrados' })
     }
 
-    const resultado = await admin.messaging().sendEachForMulticast({
+    const resultado = await getMessaging().sendEachForMulticast({
       notification: {
         title: 'Casa Ciriani',
         body: pendentes === 1 ? 'Tem 1 tarefa pendente hoje.' : `Tem ${pendentes} tarefas pendentes hoje.`,
