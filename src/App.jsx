@@ -514,7 +514,7 @@ function App() {
         return
       }
 
-      const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js')
+      const registration = await navigator.serviceWorker.ready
       const token = await getToken(messaging, {
         vapidKey: 'BChvt77hYyOr3HV5-b23aW-6T-iqsNQt6NZOA5K5yHOT7aGqNTYJvz8s6jrfRkZkJM4V8kgSlgmeKPumfNQLFXo',
         serviceWorkerRegistration: registration,
