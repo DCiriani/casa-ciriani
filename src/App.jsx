@@ -136,6 +136,9 @@ function App() {
   const [sincronizado, setSincronizado] = useState(false)
   const [cardapio, setCardapio] = useState(cardapioInicial)
   const [editandoCardapio, setEditandoCardapio] = useState(false)
+  const [viewCardapio, setViewCardapio] = useState('padrao')
+  const [cardapioSemana, setCardapioSemana] = useState({})
+  const [semanaOffsetCardapio, setSemanaOffsetCardapio] = useState(0)
   const [fixas, setFixas] = useState(tarefasFixasIniciais)
   const [tarefasSemana, setTarefasSemana] = useState({})
   const [recorrentes, setRecorrentes] = useState([])
@@ -207,6 +210,7 @@ function App() {
             const data = snap.data()
             if (data.done) setDone(data.done)
             if (data.cardapio) setCardapio(data.cardapio)
+            if (data.cardapioSemana) setCardapioSemana(data.cardapioSemana)
             if (data.fixas) setFixas(data.fixas)
             if (data.tarefasSemana) setTarefasSemana(data.tarefasSemana)
             if (data.recorrentes) setRecorrentes(data.recorrentes)
@@ -217,6 +221,7 @@ function App() {
             const inicial = {
               done: lerLocalAntigo('casaCiriani_done', {}),
               cardapio: lerLocalAntigo('casaCiriani_cardapio', cardapioInicial),
+              cardapioSemana: {},
               fixas: lerLocalAntigo('casaCiriani_fixas', tarefasFixasIniciais),
               tarefasSemana: lerLocalAntigo('casaCiriani_tarefasSemana', {}),
               recorrentes: lerLocalAntigo('casaCiriani_recorrentes', []),
@@ -463,6 +468,32 @@ function App() {
     salvarCampo('cardapio', updated)
   }
 
+  const getCardapioSemanaKey = (dia, offset) => `csem${offset}_${dia}`
+
+  const getCardapioDoDia = (dia, offset) => {
+    const key = getCardapioSemanaKey(dia, offset)
+    if (cardapioSemana[key]) return cardapioSemana[key]
+    const padrao = cardapio.find((c) => c.dia === dia)
+    return padrao || { almoco: '', jantar: '' }
+  }
+
+  const editarCardapioSemana = (dia, offset, campo, valor) => {
+    const key = getCardapioSemanaKey(dia, offset)
+    const atual = cardapioSemana[key] || getCardapioDoDia(dia, offset)
+    const atualizado = { ...atual, [campo]: valor }
+    const updated = { ...cardapioSemana, [key]: atualizado }
+    setCardapioSemana(updated)
+    salvarCampo('cardapioSemana', updated)
+  }
+
+  const restaurarCardapioPadrao = (dia, offset) => {
+    const key = getCardapioSemanaKey(dia, offset)
+    const updated = { ...cardapioSemana }
+    delete updated[key]
+    setCardapioSemana(updated)
+    salvarCampo('cardapioSemana', updated)
+  }
+
   const ativarNotificacoes = async () => {
     try {
       const permissao = await Notification.requestPermission()
@@ -489,7 +520,7 @@ function App() {
     }
   }
 
-  const hojeCardapio = cardapio[diaVisivelIdx] || cardapio[0]
+  const hojeCardapio = getCardapioDoDia(diaVisivel, semanaOffset)
   const tarefasExtraDia = getTarefasDia(diaVisivel, semanaOffset)
   const recorrentesDoDia = getRecorrentesDia(diaVisivel)
 
@@ -633,42 +664,95 @@ function App() {
 
         {tab === 'cardapio' && (
           <section>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <p className="section-title">Semana</p>
-              <button type="button" className="btn-editar" onClick={() => setEditandoCardapio(!editandoCardapio)}>
-                {editandoCardapio ? '✓ Salvar' : '✎ Editar'}
-              </button>
+            <div className="view-toggle">
+              <button type="button" className={`view-btn ${viewCardapio === 'padrao' ? 'active' : ''}`} onClick={() => setViewCardapio('padrao')}>Padrão</button>
+              <button type="button" className={`view-btn ${viewCardapio === 'semana' ? 'active' : ''}`} onClick={() => setViewCardapio('semana')}>Por semana</button>
             </div>
-            {cardapio.map((d, idx) => (
-              <details key={d.dia} className="day" open={idx === hojeDiaIdx}>
-                <summary>
-                  {d.dia} {idx === hojeDiaIdx && <span className="day-badge">hoje</span>}
-                  <span className="chev">›</span>
-                </summary>
-                <div className="day-body">
-                  <div className="meal-row">
-                    <span className="meal-tag">Almoço</span>
-                    {editandoCardapio ? (
-                      <input type="text" className="meal-input" value={d.almoco}
-                        onChange={(e) => editarCardapio(idx, 'almoco', e.target.value)}
-                      />
-                    ) : (
-                      <span className="meal-text">{d.almoco}</span>
-                    )}
-                  </div>
-                  <div className="meal-row">
-                    <span className="meal-tag">Jantar</span>
-                    {editandoCardapio ? (
-                      <input type="text" className="meal-input" value={d.jantar}
-                        onChange={(e) => editarCardapio(idx, 'jantar', e.target.value)}
-                      />
-                    ) : (
-                      <span className={`meal-text ${d.jantar === 'Livre' ? 'muted' : ''}`}>{d.jantar}</span>
-                    )}
-                  </div>
+
+            {viewCardapio === 'padrao' && (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <p className="section-title">Cardápio padrão (repete toda semana)</p>
+                  <button type="button" className="btn-editar" onClick={() => setEditandoCardapio(!editandoCardapio)}>
+                    {editandoCardapio ? '✓ Salvar' : '✎ Editar'}
+                  </button>
                 </div>
-              </details>
-            ))}
+                {cardapio.map((d, idx) => (
+                  <details key={d.dia} className="day" open={idx === hojeDiaIdx}>
+                    <summary>
+                      {d.dia} {idx === hojeDiaIdx && <span className="day-badge">hoje</span>}
+                      <span className="chev">›</span>
+                    </summary>
+                    <div className="day-body">
+                      <div className="meal-row">
+                        <span className="meal-tag">Almoço</span>
+                        {editandoCardapio ? (
+                          <input type="text" className="meal-input" value={d.almoco}
+                            onChange={(e) => editarCardapio(idx, 'almoco', e.target.value)}
+                          />
+                        ) : (
+                          <span className="meal-text">{d.almoco}</span>
+                        )}
+                      </div>
+                      <div className="meal-row">
+                        <span className="meal-tag">Jantar</span>
+                        {editandoCardapio ? (
+                          <input type="text" className="meal-input" value={d.jantar}
+                            onChange={(e) => editarCardapio(idx, 'jantar', e.target.value)}
+                          />
+                        ) : (
+                          <span className={`meal-text ${d.jantar === 'Livre' ? 'muted' : ''}`}>{d.jantar}</span>
+                        )}
+                      </div>
+                    </div>
+                  </details>
+                ))}
+              </>
+            )}
+
+            {viewCardapio === 'semana' && (
+              <>
+                <div className="semana-nav">
+                  <button type="button" className="semana-btn" onClick={() => setSemanaOffsetCardapio(Math.max(0, semanaOffsetCardapio - 1))}>‹</button>
+                  <span className="semana-label">{getSemanaLabel(semanaOffsetCardapio)}</span>
+                  <button type="button" className="semana-btn" onClick={() => setSemanaOffsetCardapio(semanaOffsetCardapio + 1)}>›</button>
+                </div>
+                <p className="empty-msg" style={{ marginTop: 4 }}>Edita só essa semana, sem mudar o cardápio padrão.</p>
+
+                {diasSemana.map((dia, idx) => {
+                  const key = getCardapioSemanaKey(dia, semanaOffsetCardapio)
+                  const temOverride = !!cardapioSemana[key]
+                  const valorDia = getCardapioDoDia(dia, semanaOffsetCardapio)
+                  const isHoje = idx === hojeDiaIdx && semanaOffsetCardapio === 0
+                  return (
+                    <details key={dia} className="day" open={isHoje}>
+                      <summary>
+                        {dia} {isHoje && <span className="day-badge">hoje</span>}
+                        {temOverride && <span className="day-badge">editado</span>}
+                        <span className="chev">›</span>
+                      </summary>
+                      <div className="day-body">
+                        <div className="meal-row">
+                          <span className="meal-tag">Almoço</span>
+                          <input type="text" className="meal-input" value={valorDia.almoco}
+                            onChange={(e) => editarCardapioSemana(dia, semanaOffsetCardapio, 'almoco', e.target.value)}
+                          />
+                        </div>
+                        <div className="meal-row">
+                          <span className="meal-tag">Jantar</span>
+                          <input type="text" className="meal-input" value={valorDia.jantar}
+                            onChange={(e) => editarCardapioSemana(dia, semanaOffsetCardapio, 'jantar', e.target.value)}
+                          />
+                        </div>
+                        {temOverride && (
+                          <p className="linklike" onClick={() => restaurarCardapioPadrao(dia, semanaOffsetCardapio)}>↺ Restaurar cardápio padrão desse dia</p>
+                        )}
+                      </div>
+                    </details>
+                  )
+                })}
+              </>
+            )}
           </section>
         )}
 
