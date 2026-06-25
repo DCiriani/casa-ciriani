@@ -475,9 +475,11 @@ const getDoneKeyRecorrente = (recorrenteId, dia) => `${recorrenteId}_${dia}`
               <div key={cat}>
                 <p className="section-title">{cat}</p>
                 <div className="note">
-                  {catMap[cat].map((t) => (
-                    <div key={t.id} className={`task-row ${done[t.id] ? 'done' : ''}`}>
-                      <span className={`check ${done[t.id] ? 'checked' : ''}`} onClick={() => toggle(t.id)}>
+                  {catMap[cat].map((t) => {
+                    const doneKey = getDoneKeyRecorrente(t.id, diaVisivel)
+                    return (
+                    <div key={t.id} className={`task-row ${done[doneKey] ? 'done' : ''}`}>
+                      <span className={`check ${done[doneKey] ? 'checked' : ''}`} onClick={() => toggle(doneKey)}>
                         <CheckIcon />
                       </span>
                       <span className="task-text">{t.text}</span>
@@ -485,7 +487,8 @@ const getDoneKeyRecorrente = (recorrenteId, dia) => `${recorrenteId}_${dia}`
                         {t.who === 'diego' ? 'Diego' : 'Rhania'}
                       </span>
                     </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
             ))}
@@ -698,9 +701,11 @@ const getDoneKeyRecorrente = (recorrenteId, dia) => `${recorrenteId}_${dia}`
                 )}
 
                 <div className="note">
-                  {fixas.map((t) => (
-                    <div key={t.id} className={`task-row ${done[t.id] ? 'done' : ''}`}>
-                      <span className={`check ${done[t.id] ? 'checked' : ''}`} onClick={() => toggle(t.id)}>
+                  {fixas.map((t) => {
+                    const doneKey = getDoneKeyRecorrente(t.id, hojeDia)
+                    return (
+                    <div key={t.id} className={`task-row ${done[doneKey] ? 'done' : ''}`}>
+                      <span className={`check ${done[doneKey] ? 'checked' : ''}`} onClick={() => toggle(doneKey)}>
                         <CheckIcon />
                       </span>
                       <span className="task-text">{t.text}</span>
@@ -709,7 +714,8 @@ const getDoneKeyRecorrente = (recorrenteId, dia) => `${recorrenteId}_${dia}`
                       </span>
                       <span className="btn-remover" onClick={() => removerFixa(t.id)}>✕</span>
                     </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </>
             )}
