@@ -312,7 +312,9 @@ function App() {
   }
 
   const getRecorrentesDia = (dia) => recorrentes.filter((r) => r.dias.includes(dia))
-const getDoneKeyRecorrente = (recorrenteId, dia) => `${recorrenteId}_${dia}`
+
+  const getDoneKeyRecorrente = (recorrenteId, dia) => `${recorrenteId}_${dia}`
+
   const toggleNovaRecorrenteDia = (dia) => {
     setNovaRecorrenteDias((prev) => prev.includes(dia) ? prev.filter((d) => d !== dia) : [...prev, dia])
   }
@@ -542,7 +544,8 @@ const getDoneKeyRecorrente = (recorrenteId, dia) => `${recorrenteId}_${dia}`
                         {t.who === 'diego' ? 'Diego' : 'Rhania'}
                       </span>
                     </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
             ))}
@@ -561,8 +564,7 @@ const getDoneKeyRecorrente = (recorrenteId, dia) => `${recorrenteId}_${dia}`
                         {t.who === 'diego' ? 'Diego' : 'Rhania'}
                       </span>
                     </div>
-                    )
-                  })}
+                  ))}
                 </div>
               </div>
             ))}
