@@ -163,7 +163,7 @@ function App() {
   const [novaCompraCat, setNovaCompraCat] = useState('')
   const [editandoItem, setEditandoItem] = useState(null)
   const [viewTarefas, setViewTarefas] = useState('dia')
-  const [diaOffset, setDiaOffset] = useState(0)
+  const [diaIndexSemana, setDiaIndexSemana] = useState(getHojeDia())
   const [notifStatus, setNotifStatus] = useState(typeof Notification !== 'undefined' ? Notification.permission : 'unsupported')
   const [viewCompras, setViewCompras] = useState('geral')
   const [comprasSemana, setComprasSemana] = useState({})
@@ -177,11 +177,11 @@ function App() {
 
   const hojeDiaIdx = getHojeDia()
   const hojeDia = diasSemana[hojeDiaIdx]
-  const diaVisivelIdx = (hojeDiaIdx + diaOffset) % 7
+  const diaVisivelIdx = diaIndexSemana
   const diaVisivel = diasSemana[diaVisivelIdx]
 
-  function getDiaLabel() {
-    if (diaOffset === 0) return 'Hoje'
+  function getDiaLabelAtual() {
+    if (semanaOffset === 0 && diaIndexSemana === hojeDiaIdx) return 'Hoje'
     return diaVisivel
   }
 
@@ -490,7 +490,7 @@ function App() {
   }
 
   const hojeCardapio = cardapio[diaVisivelIdx] || cardapio[0]
-  const tarefasExtraDia = getTarefasDia(diaVisivel, 0)
+  const tarefasExtraDia = getTarefasDia(diaVisivel, semanaOffset)
   const recorrentesDoDia = getRecorrentesDia(diaVisivel)
 
   const categoriasSugeridas = (() => {
@@ -535,9 +535,22 @@ function App() {
         {tab === 'hoje' && (
           <section>
             <div className="semana-nav">
-              <button type="button" className="semana-btn" onClick={() => setDiaOffset(Math.max(0, diaOffset - 1))}>‹</button>
-              <span className="semana-label">{getDiaLabel()}</span>
-              <button type="button" className="semana-btn" onClick={() => setDiaOffset(Math.min(6, diaOffset + 1))}>›</button>
+              <button type="button" className="semana-btn" onClick={() => {
+                const novo = Math.max(0, semanaOffset - 1)
+                setSemanaOffset(novo)
+                setDiaIndexSemana(novo === 0 ? hojeDiaIdx : 0)
+              }}>«</button>
+              <span className="semana-label">{getSemanaLabel(semanaOffset)}</span>
+              <button type="button" className="semana-btn" onClick={() => {
+                setSemanaOffset(semanaOffset + 1)
+                setDiaIndexSemana(0)
+              }}>»</button>
+            </div>
+
+            <div className="semana-nav">
+              <button type="button" className="semana-btn" onClick={() => setDiaIndexSemana(Math.max(0, diaIndexSemana - 1))}>‹</button>
+              <span className="semana-label">{getDiaLabelAtual()}</span>
+              <button type="button" className="semana-btn" onClick={() => setDiaIndexSemana(Math.min(6, diaIndexSemana + 1))}>›</button>
             </div>
 
             <div className="note tilt">
@@ -607,7 +620,7 @@ function App() {
                         <CheckIcon />
                       </span>
                       <span className="task-text">{t.text}</span>
-                      <span className={`tag ${t.who} clickable`} onClick={() => toggleTarefaSemanaWho(diaVisivel, 0, t.id)}>
+                      <span className={`tag ${t.who} clickable`} onClick={() => toggleTarefaSemanaWho(diaVisivel, semanaOffset, t.id)}>
                         {t.who === 'diego' ? 'Diego' : 'Rhania'}
                       </span>
                     </div>
