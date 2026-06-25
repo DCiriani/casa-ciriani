@@ -311,6 +311,8 @@ function App() {
 
   const getRecorrentesDia = (dia) => recorrentes.filter((r) => r.dias.includes(dia))
 
+  const getDoneKeyRecorrente = (recorrenteId, dia) => `${recorrenteId}_${dia}`
+
   const toggleNovaRecorrenteDia = (dia) => {
     setNovaRecorrenteDias((prev) => prev.includes(dia) ? prev.filter((d) => d !== dia) : [...prev, dia])
   }
@@ -475,9 +477,11 @@ function App() {
               <div key={cat}>
                 <p className="section-title">{cat}</p>
                 <div className="note">
-                  {catMap[cat].map((t) => (
-                    <div key={t.id} className={`task-row ${done[t.id] ? 'done' : ''}`}>
-                      <span className={`check ${done[t.id] ? 'checked' : ''}`} onClick={() => toggle(t.id)}>
+                  {catMap[cat].map((t) => {
+                    const doneKey = getDoneKeyRecorrente(t.id, diaVisivel)
+                    return (
+                    <div key={t.id} className={`task-row ${done[doneKey] ? 'done' : ''}`}>
+                      <span className={`check ${done[doneKey] ? 'checked' : ''}`} onClick={() => toggle(doneKey)}>
                         <CheckIcon />
                       </span>
                       <span className="task-text">{t.text}</span>
@@ -485,7 +489,8 @@ function App() {
                         {t.who === 'diego' ? 'Diego' : 'Rhania'}
                       </span>
                     </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
             ))}
@@ -494,9 +499,11 @@ function App() {
               <div key={'rec_' + grupo.categoria}>
                 <p className="section-title">{grupo.categoria} · fixo da semana</p>
                 <div className="note">
-                  {grupo.itens.map((t) => (
-                    <div key={t.id} className={`task-row ${done[t.id] ? 'done' : ''}`}>
-                      <span className={`check ${done[t.id] ? 'checked' : ''}`} onClick={() => toggle(t.id)}>
+                  {grupo.itens.map((t) => {
+                    const doneKey = getDoneKeyRecorrente(t.id, diaVisivel)
+                    return (
+                    <div key={doneKey} className={`task-row ${done[doneKey] ? 'done' : ''}`}>
+                      <span className={`check ${done[doneKey] ? 'checked' : ''}`} onClick={() => toggle(doneKey)}>
                         <CheckIcon />
                       </span>
                       <span className="task-text">{t.text}</span>
@@ -504,7 +511,8 @@ function App() {
                         {t.who === 'diego' ? 'Diego' : 'Rhania'}
                       </span>
                     </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
             ))}
@@ -695,9 +703,11 @@ function App() {
                 )}
 
                 <div className="note">
-                  {fixas.map((t) => (
-                    <div key={t.id} className={`task-row ${done[t.id] ? 'done' : ''}`}>
-                      <span className={`check ${done[t.id] ? 'checked' : ''}`} onClick={() => toggle(t.id)}>
+                  {fixas.map((t) => {
+                    const doneKey = getDoneKeyRecorrente(t.id, hojeDia)
+                    return (
+                    <div key={t.id} className={`task-row ${done[doneKey] ? 'done' : ''}`}>
+                      <span className={`check ${done[doneKey] ? 'checked' : ''}`} onClick={() => toggle(doneKey)}>
                         <CheckIcon />
                       </span>
                       <span className="task-text">{t.text}</span>
@@ -706,7 +716,8 @@ function App() {
                       </span>
                       <span className="btn-remover" onClick={() => removerFixa(t.id)}>✕</span>
                     </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </>
             )}
